@@ -20,7 +20,7 @@ class JubuLogo extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(fontSize * 0.2),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF6B4A).withOpacity(0.15),
+            color: const Color(0xFFFF6B4A).withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(fontSize * 0.35),
           ),
           child: Icon(

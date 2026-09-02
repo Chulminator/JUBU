@@ -3,6 +3,8 @@
 이 문서는 **코드를 잘 몰라도** 앱이 무엇인지, 무엇을 확인하면 되는지 안내합니다.  
 기능이 추가될 때마다 아래 목차에 테스트 방법이 채워집니다.
 
+**화면 기준:** 지금은 **Android 폰/에뮬레이터** 기준으로 레이아웃을 맞춥니다. Chrome(웹)으로 확인하지 않아도 됩니다.
+
 ---
 
 ## 1. 앱이 뭔가요?
@@ -29,6 +31,9 @@
 | `lib/core/constants/app_colors.dart` | 앱 전체에서 쓰는 **색상 이름표**. |
 | `lib/core/constants/app_text_styles.dart` | 제목/본문/요리 모드용 **글자 크기·굵기**. |
 | `lib/features/recipe/models/recipe_model.dart` | 레시피 한 건을 담는 **데이터 설계도** (화면 없음). |
+| `lib/core/utils/unit_converter.dart` | g↔oz, ml↔cup **숫자 계산기** (화면 없음). |
+| `lib/features/recipe/services/mock_recipe_service.dart` | 화면 만들기 전에 쓰는 **가짜 레시피 3개**. |
+| `lib/features/recipe/views/recipe_feed_screen.dart` | 메인 피드 (Explore / Friends 탭). |
 
 ---
 
@@ -40,7 +45,7 @@
 lib/
 ├── core/                 ← 여러 화면이 같이 쓰는 공통 것
 │   ├── constants/        ← 색상, 글자 스타일 (여기 파일이 있음)
-│   ├── utils/            ← 나중에 단위 변환 같은 계산 도구
+│   ├── utils/            ← 단위 변환 (`unit_converter.dart`)
 │   └── widgets/          ← 나중에 여러 화면에서 재사용할 작은 UI
 ├── features/             ← 기능별 방
 │   ├── auth/             ← 로그인
@@ -73,7 +78,7 @@ lib/
 
 3. 저장한 뒤, 나중에 화면이 연결되면 앱을 다시 실행(`flutter run`)해서 확인합니다.
 
-4. **Step 1 확인:** 위 두 테마 파일과 `lib/features/` 아래 `auth`, `recipe`, `cooking_mode` 폴더가 있으면 됩니다. 화면은 `Hello World!` 여도 정상입니다.
+4. **Step 1 확인:** 위 두 테마 파일과 `lib/features/` 아래 `auth`, `recipe`, `cooking_mode` 폴더가 있으면 됩니다.
 
 ---
 
@@ -132,24 +137,135 @@ lib/
 2. 파일을 열어서 `class Ingredient`, `class RecipeStep`, `class RecipeModel` 세 이름이 보이면 성공입니다.
 3. `toMap` / `fromMap` 같은 Firestore 저장 코드는 **아직 없습니다.** 일부러 빼 두었습니다.
 
+### Step 3 단위 변환기 (`UnitConverter`)
+
+파일: `lib/core/utils/unit_converter.dart`  
+아직 **버튼이나 화면은 없습니다.** 나중에 레시피 상세의 Metric/Imperial 토글이 이 계산을 호출합니다.
+
+**지원하는 공식 (순수 나눗셈/곱셈, 패키지 없음)**
+
+| 방향 | 공식 |
+|------|------|
+| g → oz | `양 / 28.3495` |
+| oz → g | `양 * 28.3495` |
+| ml → cup | `양 / 240.0` (미국 법정 cup) |
+| cup → ml | `양 * 240.0` |
+
+- `tbsp`, `tsp` 는 **다른 단위로 바꾸지 않습니다.** 이름 그대로 둡니다.
+- 인분을 늘리는 `scaleForServings` 는 **아직 없습니다.**
+- `formatAmount`: `1.0` → `"1"`, `1.50` → `"1.5"`, `0.3333` → `"0.33"` (소수 최대 2자리, 쓸데없는 0 제거)
+
+초보자용 사용 예시 (한 줄):
+
+```dart
+UnitConverter.formatAmount(UnitConverter.convert(amount: 100, fromUnit: 'g', toUnit: 'oz'));
+```
+
+100g을 온스로 바꾼 뒤, 화면에 넣을 짧은 글자로 만듭니다.
+
+**확인 방법:** `UnitConverter` 함수 이름이 파일에 있으면 됩니다. 화면 확인은 아래 Step 5를 보세요.
+
+### Step 4 더미 레시피 (`MockRecipeService`)
+
+Firebase에 아직 레시피를 저장하지 않아도, 나중에 목록/상세 화면을 그릴 때 **가짜 데이터**가 필요합니다.  
+인터넷이나 로그인 없이 같은 3개가 항상 나옵니다.
+
+파일: `lib/features/recipe/services/mock_recipe_service.dart`
+
+지금 들어 있는 샘플:
+
+| 제목 | 작성자 | 칭호 | 대체 팁이 있는 재료 |
+|------|--------|------|-------------------|
+| 매콤 두부조림 | 철민 | K-반찬 장인 | 고춧가루 (Trader Joe's Spice aisle) |
+| 김치 베이컨 파스타 | Emily | 퓨전 연금술사 | 생크림 (미국 마트 Dairy) |
+| 소고기 미역국 | Alex | 없음 (`null`) | 국간장 (Whole Foods 아시안) |
+
+코드에서 꺼내는 방법:
+
+```dart
+final recipes = MockRecipeService.getRecipes();
+```
+
+**새 테스트 레시피를 넣고 싶을 때**
+
+1. 위 파일을 엽니다.
+2. `_recipes` 리스트 **안**에 `RecipeModel( ... ),` 를 하나 더 붙입니다. (맨 위 3개 중 하나를 복사해 제목·재료만 바꿔도 됩니다.)
+3. `id` 는 다른 레시피와 **겹치지 않게** 적습니다.
+4. 저장합니다. 피드 화면이 이 리스트를 읽으므로, 앱을 **다시 실행**(`flutter run` 또는 `r` 핫 리로드)하면 Explore/Friends에 카드가 늘어납니다.
+
+빼려면 그 `RecipeModel(...)` 덩어리만 지우면 됩니다.
+
+### Step 5 메인 피드 화면 (`RecipeFeedScreen`)
+
+`lib/main.dart` 가 이제 이 화면을 첫 화면으로 엽니다. `Hello World!` 는 더 이상 나오지 않습니다.
+
+파일: `lib/features/recipe/views/recipe_feed_screen.dart`
+
 ---
 
-## 4. 지금 당장 할 수 있는 확인 (앱 실행)
+## 4. 앱 실행 후 화면 테스트 (초보자용)
 
-아직 화면 기능 테스트 항목은 없습니다. 앱이 **켜지는지**만 확인하면 됩니다.
-
-1. Cursor 또는 VS Code에서 이 프로젝트 폴더(`jubu`)를 엽니다.
-2. 터미널에서 프로젝트 루트(이 `PROJECT_MANUAL.md`가 있는 폴더)인지 확인합니다.
-3. 아래 명령을 실행합니다.
+1. Cursor에서 `jubu` 폴더가 열린 상태로 터미널을 엽니다.
+2. **Android 에뮬레이터**를 켜거나, USB로 폰을 연결합니다. (Android Studio의 Device Manager에서 Pixel 같은 기기를 실행하면 됩니다.)
+3. 실행합니다.
 
 ```bash
 flutter run
 ```
 
-4. 에뮬레이터 또는 연결된 폰에 기본 Flutter 화면이 뜨면 성공입니다.
-5. 문제가 나면 `CHANGELOG.md` 최신 항목과 이 매뉴얼을 함께 보면서 어디까지 만들었는지 확인하세요.
+기기를 고르라는 목록이 나오면 **android** / **emulator** 항목의 번호를 입력합니다.  
+웹(Chrome)은 지금은 쓰지 않습니다. 한 번에 지정하려면:
 
-> 팁: `flutter doctor` 를 실행하면 Flutter/Android/iOS 도구가 설치되어 있는지 점검할 수 있습니다.
+```bash
+flutter run -d android
+```
+
+에뮬레이터가 안 보이면 `flutter devices` 로 연결된 기기를 확인하세요.
+
+4. **맨 위 주황 바**에 큰 글자 **JUBU** 가 보이고, 오른쪽 끝에 검색(돋보기)·알림(종) 아이콘이 있으면 성공입니다. (아이콘을 눌러도 아직 아무 일도 없습니다.)
+5. 주황 바 **아래 탭**이 두 개입니다: **Explore** | **Friends**
+
+### Explore 탭 (기본으로 열려 있음)
+
+- **오늘 뭐 먹지?** 용 탐색 화면입니다.
+- 카드가 **2열**로 나열됩니다.
+- 각 카드: **위**에 음식 사진, **아래**에 제목(매콤 두부조림 등)과 조리 시간(`20 min`). 폰을 세로로 들었을 때 한 화면에 2열이 보이면 정상입니다.
+- 카드를 **눌러도 상세 화면은 아직 없습니다.** (나중에 연결)
+
+레시피가 3개면 위 2개 + 아래 1개가 보이면 정상입니다.
+
+### Friends 탭으로 바꾸는 방법
+
+1. 상단에서 **Friends** 글자를 **한 번 탭**(또는 클릭)합니다.
+2. 화면이 **한 줄짜리 큰 카드** 목록으로 바뀝니다.
+3. 각 카드에서 확인할 것:
+   - 큰 음식 사진
+   - 작성자 이름 (철민, Emily, Alex)
+   - 칭호: 철민은 `K-반찬 장인`, Emily는 `퓨전 연금술사`, Alex는 칭호 줄이 **없음**
+   - 짧은 소개 글 + 노란 박스의 마트 팁 (Trader Joe's / Dairy / Whole Foods)
+4. **Explore** 를 다시 누르면 2열 그리드로 돌아갑니다.
+
+사진이 안 뜨고 회색+포크 아이콘이면, 인터넷이 막혀 Unsplash 이미지를 못 받은 것입니다. 제목·시간은 그대로 보여야 합니다.
+
+> `flutter test` 는 예전 `Hello World!` 화면을 찾는 파일이 남아 있으면 실패할 수 있습니다. Step 5 확인은 **`flutter run` 화면**으로 하세요.
+
+> 팁: `flutter doctor` 로 도구 설치를 점검할 수 있습니다.
+
+### 빨간 오류: `The name 'MyApp' isn't a class`
+
+이건 앱이 고장난 게 아니라 **테스트 파일 이름 불일치**였습니다.
+
+- `lib/main.dart` 의 앱 클래스 이름은 `MainApp` 입니다.
+- 예전 템플릿 테스트 `test/widget_test.dart` 가 없는 이름 `MyApp` 과 카운터(0, + 버튼)를 찾고 있었습니다.
+- 지금은 `MainApp` 을 켜고 화면에 `Hello World!` 가 있는지만 검사합니다.
+
+에디터에서 오류가 사라졌는지 확인한 뒤, 터미널에서:
+
+```bash
+flutter test
+```
+
+모두 통과하면 성공입니다.
 
 ---
 
@@ -157,10 +273,10 @@ flutter run
 
 아래 항목은 **아직 비어 있습니다.** 해당 기능을 만들 때 여기에 “어디를 누르고, 무엇이 보여야 하는지”를 적습니다.
 
-- [ ] 5.1 앱 실행 / 첫 화면
+- [x] 5.1 앱 실행 / 첫 화면 — `flutter run` 후 주황 AppBar에 **JUBU**
 - [ ] 5.2 로그인 (Google 등)
-- [ ] 5.3 메인 피드 — Explore (탐색)
-- [ ] 5.4 메인 피드 — Friends (친구)
+- [x] 5.3 메인 피드 — Explore (2열 그리드, 사진·제목·조리시간)
+- [x] 5.4 메인 피드 — Friends (와이드 카드, 작성자·칭호·팁)
 - [ ] 5.5 레시피 상세 — 단위 토글 (Metric / Imperial)
 - [ ] 5.6 레시피 상세 — 인분(Servings) 조절
 - [ ] 5.7 로컬 식재료 대체(Swap) 정보
@@ -174,9 +290,12 @@ flutter run
 
 기능을 만들면 보통 `lib/` 아래에 파일이 생깁니다.
 
-- `lib/main.dart` — 앱 입구 (아직 테마 파일과 연결하지 않음)
+- `lib/main.dart` — 앱 입구 (`RecipeFeedScreen` + `AppColors` 테마)
 - `lib/core/constants/` — 색상·글자 스타일
+- `lib/core/utils/unit_converter.dart` — g/oz, ml/cup 계산
 - `lib/features/recipe/models/recipe_model.dart` — 레시피 데이터 설계도
+- `lib/features/recipe/services/mock_recipe_service.dart` — 테스트용 가짜 레시피 3개
+- `lib/features/recipe/views/recipe_feed_screen.dart` — Explore / Friends 피드
 - `lib/features/` — 로그인, 레시피, 요리 모드 등 **기능별** 폴더
 
 모르는 파일이 보이면 **이 매뉴얼의 해당 번호**와 `CHANGELOG.md`의 파일 목록을 같이 보면 됩니다.
