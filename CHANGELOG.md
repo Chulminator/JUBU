@@ -11,15 +11,85 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
-## [2026-09-02 16:39] TASK-007
+## [2026-09-03 15:51] Step 8
 
 - **생성/수정된 파일**
+  - `lib/features/recipe/views/create_recipe_screen.dart` (생성)
+  - `lib/features/recipe/views/recipe_feed_screen.dart` (수정)
+  - `lib/features/recipe/services/mock_recipe_service.dart` (수정)
+  - `PROJECT_MANUAL.md` (수정)
+  - `CHANGELOG.md` (수정)
+- **핵심 로직 요약**
+  - `CreateRecipeScreen`: 기본 정보, 동적 재료/단계 행, 만족도 슬라이더, 추천 태그, 실전 메모 폼. 저장 시 `authorId: current_user_me`, `authorName: 나`.
+  - `MockRecipeService.addRecipe`로 메모리 리스트 맨 앞에 삽입.
+  - 피드 FAB에서 작성 화면으로 이동하고, pop 후 `setState`로 Explore/My Log 갱신.
+
+## [2026-09-03 14:34] TASK-011 (Step 7)
+
+- **생성/수정된 파일**
+  - `lib/features/cooking_mode/views/cooking_mode_screen.dart` (생성)
+  - `lib/features/recipe/views/recipe_detail_screen.dart` (수정)
+  - `PROJECT_MANUAL.md` (수정)
+  - `CHANGELOG.md` (수정)
+- **핵심 로직 요약**
+  - `CookingModeScreen`: PageView로 단계 스와이프, `AppTextStyles.cookingMode` 대형 지침, `Timer.periodic` 기반 시작/일시정지/리셋 타이머.
+  - 상단 제목 + Step n/N + 닫기(X). 하단 이전/다음, 마지막은 요리 완료 → 다이얼로그 후 pop.
+  - 상세 화면「요리 모드 시작」에서 `Navigator.push`로 연결. wakelock 등 외부 패키지 없음.
+
+## [2026-09-03 13:36] TASK-010 (Step 6-2)
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_detail_screen.dart` (수정)
+  - `PROJECT_MANUAL.md` (수정)
+  - `CHANGELOG.md` (수정)
+- **핵심 로직 요약**
+  - 상세 화면을 StatefulWidget으로 바꾸고 `isImperial`(기본 `false`, Metric) 상태 변수로 사용자 단위 선호를 흉내 냄.
+  - 재료는 원본을 그대로 찍지 않고 항상 `UnitConverter.convert` + `formatAmount`를 통과. Imperial: g→oz, ml→cup. Metric: oz→g, cup→ml. tbsp/tsp는 유지.
+  - AppBar 작은 아이콘으로 `isImperial` 토글해 즉시 검증 가능 (프로필 연동 전 테스트용).
+
+## [2026-09-03 13:19] TASK-009 (PROJECT_SPEC sync)
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart` (수정)
+  - `lib/features/recipe/services/mock_recipe_service.dart` (수정)
+  - `lib/features/recipe/views/recipe_detail_screen.dart` (수정)
   - `lib/features/recipe/views/recipe_feed_screen.dart` (수정)
   - `PROJECT_MANUAL.md` (수정)
   - `CHANGELOG.md` (수정)
 - **핵심 로직 요약**
-  - 레이아웃 기준을 Android 세로 폰으로 맞춤. Explore 카드는 웹용 사진 위 글자 오버레이를 제거하고, 사진 아래 제목·조리시간이 보이는 2열 그리드로 되돌림.
-  - 이후 확인은 Chrome이 아니라 Android 에뮬레이터/`flutter run -d android`를 사용.
+  - `RecipeModel`을 PROJECT_SPEC §5에 맞춤: `authorId` 추가, `baseServings` 제거, `satisfactionScore` 기본 5.0, `recommendationTag` 기본 `microwave only!`.
+  - Mock: 두부조림 `authorId: current_user_me`, 나머지 타인 ID. `getMyRecipes()` 헬퍼 추가.
+  - 상세: 수동 토글 없음. `isImperial = false` 플레이스홀더 + `UnitConverter` 자동 렌더. 요리 평가 카드·Step 좌측 정렬 유지.
+  - 피드: Explore / Friends / **My Log** 3탭 + 작성용 FAB(+), onPressed 빈 람다.
+
+## [2026-09-03 12:04] TASK-008 (Step 6-1)
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart` (수정)
+  - `lib/features/recipe/services/mock_recipe_service.dart` (수정)
+  - `lib/features/recipe/views/recipe_detail_screen.dart` (수정)
+  - `lib/features/recipe/views/recipe_feed_screen.dart` (수정)
+  - `PROJECT_MANUAL.md` (수정)
+  - `CHANGELOG.md` (수정)
+- **핵심 로직 요약**
+  - `RecipeModel`에 `satisfactionScore`(별점), `recommendationTag`(추천 문구), `cookNote`(실전 후기, 선택) 추가.
+  - Mock 3개에 현실적인 값 채움. 미역국은 `cookNote` 없음.
+  - 상세 화면: Metric/Imperial 토글 제거, 재료는 원본 단위로 표시. Steps는 원형 숫자 뱃지 + 설명을 한 줄 왼쪽 정렬.
+  - 상세·피드(Explore 별점, Friends 별점+칩+메모)에 읽기 전용 요리 노트 카드 표시.
+
+## [2026-09-03 10:51] TASK-007 (Step 6)
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_detail_screen.dart` (생성)
+  - `lib/features/recipe/views/recipe_feed_screen.dart` (수정)
+  - `PROJECT_MANUAL.md` (수정)
+  - `CHANGELOG.md` (수정)
+- **핵심 로직 요약**
+  - `RecipeDetailScreen`: `Metric / Imperial` `SegmentedButton` 토글에 따라 Ingredients의 g/oz, ml/cup 값을 `UnitConverter`로 변환하고 `formatAmount`로 표시.
+  - `substitutions` 또는 `storeTip`이 있는 재료는 Ingredients 아래에 노란 💡 팁 박스를 표시.
+  - Steps를 단계별로 나열하고, 하단 고정 액션 바에 `요리 모드 시작` 버튼(동작은 빈 람다).
+  - 피드의 카드 `onTap`에서 `Navigator.push`로 해당 `RecipeModel`을 상세 화면으로 전달.
+
 
 ## [2026-09-02 16:28] TASK-006 (Step 5)
 

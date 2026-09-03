@@ -33,7 +33,8 @@
 | `lib/features/recipe/models/recipe_model.dart` | 레시피 한 건을 담는 **데이터 설계도** (화면 없음). |
 | `lib/core/utils/unit_converter.dart` | g↔oz, ml↔cup **숫자 계산기** (화면 없음). |
 | `lib/features/recipe/services/mock_recipe_service.dart` | 화면 만들기 전에 쓰는 **가짜 레시피 3개**. |
-| `lib/features/recipe/views/recipe_feed_screen.dart` | 메인 피드 (Explore / Friends 탭). |
+| `lib/features/recipe/views/recipe_feed_screen.dart` | 메인 피드 (Explore / Friends / My Log). |
+| `lib/features/recipe/views/create_recipe_screen.dart` | 새 레시피·요리 일지 **작성 폼**. |
 
 ---
 
@@ -122,7 +123,11 @@ lib/
   예: `K-반찬 장인`, `트레이더 조 개척자`  
   칭호 시스템을 아직 만들지 않았지만, 데이터 칸은 미리 잡아 둔 것입니다.
 - `imageUrl`, `category` — 사진 주소, 분류(반찬 등)
-- `baseServings` — 이 재료 양이 **몇 인분 기준**인지 (인분을 늘릴 때 출발점)
+- `baseServings` — (구버전 필드, 최신 PROJECT_SPEC에서는 제거됨)
+- `authorId` — 작성자 고유 ID (내 다이어리 필터에 사용, 예: `current_user_me`)
+- `satisfactionScore` — 작성자 완성도 별점 (기본 5.0)
+- `recommendationTag` — 추천 칩 문구 (기본 `microwave only!`)
+- `cookNote` — 실전 후기 메모 (없어도 됨)
 - `cookingTimeMinutes` — 총 조리 시간(분)
 - `ingredients` — 위의 Ingredient 여러 개
 - `steps` — 위의 RecipeStep 여러 개
@@ -223,14 +228,15 @@ flutter run -d android
 에뮬레이터가 안 보이면 `flutter devices` 로 연결된 기기를 확인하세요.
 
 4. **맨 위 주황 바**에 큰 글자 **JUBU** 가 보이고, 오른쪽 끝에 검색(돋보기)·알림(종) 아이콘이 있으면 성공입니다. (아이콘을 눌러도 아직 아무 일도 없습니다.)
-5. 주황 바 **아래 탭**이 두 개입니다: **Explore** | **Friends**
+5. 주황 바 **아래 탭**이 **세 개**입니다: **Explore** | **Friends** | **My Log**
+6. 화면 **오른쪽 아래**에 주황 **+** 버튼(FAB)이 있습니다. 누르면 작성 화면이 열립니다.
 
 ### Explore 탭 (기본으로 열려 있음)
 
 - **오늘 뭐 먹지?** 용 탐색 화면입니다.
 - 카드가 **2열**로 나열됩니다.
 - 각 카드: **위**에 음식 사진, **아래**에 제목(매콤 두부조림 등)과 조리 시간(`20 min`). 폰을 세로로 들었을 때 한 화면에 2열이 보이면 정상입니다.
-- 카드를 **눌러도 상세 화면은 아직 없습니다.** (나중에 연결)
+- 카드를 **누르면** 상세 화면으로 이동합니다.
 
 레시피가 3개면 위 2개 + 아래 1개가 보이면 정상입니다.
 
@@ -244,6 +250,12 @@ flutter run -d android
    - 칭호: 철민은 `K-반찬 장인`, Emily는 `퓨전 연금술사`, Alex는 칭호 줄이 **없음**
    - 짧은 소개 글 + 노란 박스의 마트 팁 (Trader Joe's / Dairy / Whole Foods)
 4. **Explore** 를 다시 누르면 2열 그리드로 돌아갑니다.
+
+### My Log 탭
+
+1. 상단 **My Log**를 탭합니다.
+2. 내가 올린 요리만 2열 그리드로 보입니다. (Mock: 매콤 두부조림)
+3. 우측 아래 **+** 를 누르면 새 레시피 작성 화면이 열립니다.
 
 사진이 안 뜨고 회색+포크 아이콘이면, 인터넷이 막혀 Unsplash 이미지를 못 받은 것입니다. 제목·시간은 그대로 보여야 합니다.
 
@@ -267,6 +279,56 @@ flutter test
 
 모두 통과하면 성공입니다.
 
+### Step 6 / 6-1 / SPEC 동기화 — 상세·자동 단위·My Log
+
+상세 화면은 피드 카드를 누르면 열립니다.
+
+1. `flutter run -d android` 로 앱을 실행합니다.
+2. **Explore / Friends / My Log** 중 아무 카드나 누릅니다.
+3. 상세에서 확인할 것:
+   - 상단: 이미지, 제목, 조리시간, 작성자(칭호 배지)
+   - AppBar **오른쪽 아이콘**(시험관/자 모양)은 **테스트용 단위 전환**입니다. 나중에 프로필 설정으로 대체됩니다.
+     - 기본은 Metric (`isImperial = false`): 두부 `400 g`, 물 `120 ml`
+     - 아이콘을 한 번 누르면 Imperial: 두부 약 `14.11 oz`, 물 `0.5 cup`
+     - `tbsp` / `tsp`는 **항상 그대로**입니다.
+     - 숫자는 항상 `UnitConverter.formatAmount`를 거친 뒤 표시됩니다.
+   - 요리 평가 카드: 별점 + 추천 칩 + 따옴표 실전 메모(`cookNote`가 있을 때만)
+   - Steps: 주황 원형 번호 뱃지와 설명이 **한 줄 왼쪽**에 맞춰져 있으면 성공
+
+**My Log 탭**
+1. 상단 **My Log**를 탭합니다.
+2. `authorId == current_user_me` 인 레시피만 나옵니다. (지금은 **매콤 두부조림** 1개)
+3. 헤더에 `My Cook Log` / `1개의 요리 기록`이 보이면 정상입니다.
+
+**피드에서 별점/추천**
+- Explore: 카드 오른쪽 별 + 점수
+- Friends: 별점 + 초록 추천 칩 + 메모 박스(있을 때)
+
+### Step 7 요리 모드 (`CookingModeScreen`)
+
+멀리서도 보이게 큰 글씨로 단계만 보여주는 화면입니다.
+
+1. 아무 레시피 상세로 들어갑니다.
+2. 맨 아래 **요리 모드 시작**을 누릅니다.
+3. 확인할 것:
+   - 위에 요리 제목 + `Step 1 / N`, 오른쪽 **X**로 닫기
+   - 가운데 큰 글씨로 조리 지침 (좌우 스와이프 또는 하단 버튼으로 이동)
+   - `timerMinutes`가 있는 단계(예: 두부조림 3단계 5분, 미역국 3단계 20분):
+     - 큰 카운트다운 `MM:SS`
+     - **시작** → 숫자가 줄어듦 / **일시정지** → 멈춤 / **리셋** → 처음 시간으로
+   - 마지막 단계에서 버튼이 **요리 완료**로 바뀌고, 누르면 축하 다이얼로그 후 상세로 돌아감
+
+### Step 8 새 레시피 작성 (`CreateRecipeScreen`)
+
+1. 피드에서 오른쪽 아래 **+** 를 누릅니다.
+2. 제목·설명·카테고리·조리 시간(분)을 적습니다. 이미지 URL은 비워 둬도 됩니다.
+3. **재료 추가**로 행을 늘릴 수 있습니다. 대체재는 쉼표로 여러 개 (`Cayenne, Paprika`).
+4. **단계 추가**로 조리 순서를 늘립니다. 타이머 분은 비워 둬도 됩니다.
+5. 만족도 슬라이더(0~5, 0.5 단위), 추천 태그, 실전 메모를 채웁니다.
+6. **저장하기**를 누릅니다.
+7. 피드로 돌아오면 **Explore** 맨 앞과 **My Log**에 방금 만든 글이 보여야 합니다. (작성자 이름은 `나`, `authorId`는 `current_user_me`)
+8. 재료나 단계가 비어 있으면 저장되지 않고 안내 메시지가 뜹니다.
+
 ---
 
 ## 5. 기능 테스트 가이드 목차 (앞으로 채워짐)
@@ -277,10 +339,12 @@ flutter test
 - [ ] 5.2 로그인 (Google 등)
 - [x] 5.3 메인 피드 — Explore (2열 그리드, 사진·제목·조리시간)
 - [x] 5.4 메인 피드 — Friends (와이드 카드, 작성자·칭호·팁)
-- [ ] 5.5 레시피 상세 — 단위 토글 (Metric / Imperial)
+- [x] 5.4b 메인 피드 — My Log (내 요리 다이어리 그리드) + FAB(+)
+- [x] 5.5 레시피 상세 — 자동 단위 변환 + 별점/추천/요리 메모
 - [ ] 5.6 레시피 상세 — 인분(Servings) 조절
-- [ ] 5.7 로컬 식재료 대체(Swap) 정보
-- [ ] 5.8 요리 모드 (Cooking Mode)
+- [x] 5.7 로컬 식재료 대체(Swap) 정보 — 상세 Ingredients 팁 박스
+- [x] 5.8 요리 모드 (Cooking Mode) — PageView 단계 + 타이머 + 요리 완료
+- [x] 5.8b 새 레시피 작성 (CreateRecipeScreen) — FAB(+) 저장 후 피드 갱신
 - [ ] 5.9 레시피 리믹스 (Remix / Fork)
 - [ ] 5.10 칭호(업적) 시스템
 
@@ -293,9 +357,12 @@ flutter test
 - `lib/main.dart` — 앱 입구 (`RecipeFeedScreen` + `AppColors` 테마)
 - `lib/core/constants/` — 색상·글자 스타일
 - `lib/core/utils/unit_converter.dart` — g/oz, ml/cup 계산
-- `lib/features/recipe/models/recipe_model.dart` — 레시피 데이터 설계도
-- `lib/features/recipe/services/mock_recipe_service.dart` — 테스트용 가짜 레시피 3개
-- `lib/features/recipe/views/recipe_feed_screen.dart` — Explore / Friends 피드
+- `lib/features/recipe/models/recipe_model.dart` — 레시피 데이터 설계도 (`authorId` 포함)
+- `lib/features/recipe/services/mock_recipe_service.dart` — `getRecipes()` / `getMyRecipes()`
+- `lib/features/recipe/views/recipe_feed_screen.dart` — Explore / Friends / My Log + FAB
+- `lib/features/recipe/views/create_recipe_screen.dart` — 새 레시피 작성 폼
+- `lib/features/recipe/views/recipe_detail_screen.dart` — 자동 단위 + 요리 평가 카드
+- `lib/features/cooking_mode/views/cooking_mode_screen.dart` — 요리 집중 모드 (큰 글씨·타이머)
 - `lib/features/` — 로그인, 레시피, 요리 모드 등 **기능별** 폴더
 
 모르는 파일이 보이면 **이 매뉴얼의 해당 번호**와 `CHANGELOG.md`의 파일 목록을 같이 보면 됩니다.
