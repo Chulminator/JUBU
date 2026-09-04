@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -16,17 +19,20 @@ class CreateRecipeScreen extends StatefulWidget {
 
 class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ImagePicker _picker = ImagePicker();
 
   final TextEditingController _title = TextEditingController();
   final TextEditingController _description = TextEditingController();
-  final TextEditingController _category = TextEditingController(text: '반찬');
-  final TextEditingController _cookTime = TextEditingController(text: '20');
-  final TextEditingController _imageUrl = TextEditingController();
-  final TextEditingController _recommendationTag =
+  final TextEditingController _category = TextEditingController();
+  final TextEditingController _cookTime = TextEditingController();
+  final TextEditingController _recommendationTags =
       TextEditingController(text: 'microwave only!');
   final TextEditingController _cookNote = TextEditingController();
 
+  String? _coverImagePath;
   double _satisfactionScore = 5.0;
+  bool _showCookDiary = false;
+
   final List<_IngredientDraft> _ingredients = <_IngredientDraft>[
     _IngredientDraft(),
   ];
@@ -41,8 +47,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     _description.dispose();
     _category.dispose();
     _cookTime.dispose();
-    _imageUrl.dispose();
-    _recommendationTag.dispose();
+    _recommendationTags.dispose();
     _cookNote.dispose();
     for (final row in _ingredients) {
       row.dispose();
@@ -64,6 +69,13 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     );
   }
 
+  Future<void> _pickCoverImage() async {
+    final file = await _picker.pickImage(source: ImageSource.gallery);
+    if (file != null) {
+      setState(() => _coverImagePath = file.path);
+    }
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -80,14 +92,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
           name: name,
           amount: double.tryParse(row.amount.text.trim()) ?? 0,
           unit: row.unit.text.trim().isEmpty ? 'g' : row.unit.text.trim(),
-          substitutions: row.substitutions.text
-              .split(',')
-              .map((String s) => s.trim())
-              .where((String s) => s.isNotEmpty)
-              .toList(),
-          storeTip: row.storeTip.text.trim().isEmpty
-              ? null
-              : row.storeTip.text.trim(),
+          storeTip: row.storeTipExpanded && row.storeTip.text.trim().isNotEmpty
+              ? row.storeTip.text.trim()
+              : null,
         ),
       );
     }
@@ -105,6 +112,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
           stepNumber: stepNumber,
           instruction: instruction,
           timerMinutes: timerRaw.isEmpty ? null : int.tryParse(timerRaw),
+          imagePath: row.imagePath,
         ),
       );
       stepNumber += 1;
@@ -112,28 +120,34 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
 
     if (ingredients.isEmpty || steps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('재료와 조리 단계를 각각 1개 이상 입력하세요.')),
+        const SnackBar(
+          content: Text('Add at least one ingredient and one step.'),
+        ),
       );
       return;
     }
 
     final note = _cookNote.text.trim();
-    final image = _imageUrl.text.trim();
-    final tag = _recommendationTag.text.trim();
+    final tags = _recommendationTags.text
+        .split(',')
+        .map((String s) => s.trim())
+        .where((String s) => s.isNotEmpty)
+        .toList();
 
     final recipe = RecipeModel(
       id: 'user-${DateTime.now().millisecondsSinceEpoch}',
       title: _title.text.trim(),
       description: _description.text.trim(),
       authorId: MockRecipeService.currentUserId,
-      authorName: '나',
-      imageUrl: image.isEmpty ? _fallbackImage : image,
-      category: _category.text.trim().isEmpty ? '반찬' : _category.text.trim(),
+      authorName: 'Me',
+      imageUrl: _coverImagePath ?? _fallbackImage,
+      category: _category.text.trim().isEmpty ? 'Korean' : _category.text.trim(),
       cookingTimeMinutes: int.tryParse(_cookTime.text.trim()) ?? 0,
       ingredients: ingredients,
       steps: steps,
       satisfactionScore: _satisfactionScore,
-      recommendationTag: tag.isEmpty ? 'microwave only!' : tag,
+      recommendationTags:
+          tags.isEmpty ? const <String>['microwave only!'] : tags,
       cookNote: note.isEmpty ? null : note,
       createdAt: DateTime.now(),
     );
@@ -149,36 +163,39 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text('새 레시피 / 요리 일지'),
+        title: const Text('New recipe / cook log'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: <Widget>[
-            Text('기본 정보', style: AppTextStyles.subtitle),
+            Text('Basics', style: AppTextStyles.subtitle),
             const SizedBox(height: 10),
             TextFormField(
               controller: _title,
               style: AppTextStyles.body,
-              decoration: _field('제목'),
+              decoration: _field('Title'),
               validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? '제목을 입력하세요' : null,
+                  (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _description,
               style: AppTextStyles.body,
               maxLines: 3,
-              decoration: _field('설명'),
+              decoration: _field('Description'),
               validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? '설명을 입력하세요' : null,
+                  (v == null || v.trim().isEmpty) ? 'Enter a description' : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _category,
               style: AppTextStyles.body,
-              decoration: _field('카테고리', hint: '반찬, 면, 국, Fusion…'),
+              decoration: _field(
+                'Category',
+                hint: 'e.g. Korean, Vegan, Quick Meal',
+              ),
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -188,23 +205,49 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
               inputFormatters: <TextInputFormatter>[
                 FilteringTextInputFormatter.digitsOnly,
               ],
-              decoration: _field('조리 시간 (분)'),
+              decoration: _field('Cook time (minutes)'),
               validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? '조리 시간을 입력하세요' : null,
+                  (v == null || v.trim().isEmpty) ? 'Enter cook time' : null,
             ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _imageUrl,
-              style: AppTextStyles.body,
-              decoration: _field(
-                '대표 이미지 URL (선택)',
-                hint: '비워 두면 기본 사진을 씁니다',
+            const SizedBox(height: 12),
+            Text('Cover photo', style: AppTextStyles.bodySmall),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: _pickCoverImage,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 140,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.surfaceMuted),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _coverImagePath == null
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(Icons.photo_library_outlined,
+                                color: AppColors.textSecondary),
+                            SizedBox(height: 6),
+                            Text('Pick from gallery',
+                                style: AppTextStyles.bodySmall),
+                          ],
+                        ),
+                      )
+                    : Image.file(
+                        File(_coverImagePath!),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Row(
               children: <Widget>[
-                Text('재료', style: AppTextStyles.subtitle),
+                Text('Ingredients', style: AppTextStyles.subtitle),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () {
@@ -212,7 +255,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   },
                   icon: const Icon(Icons.add, color: AppColors.primary),
                   label: Text(
-                    '재료 추가',
+                    'Add ingredient',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -227,6 +270,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 draft: _ingredients[i],
                 decoration: _field,
                 canRemove: _ingredients.length > 1,
+                onChanged: () => setState(() {}),
                 onRemove: () {
                   setState(() {
                     _ingredients[i].dispose();
@@ -235,10 +279,10 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 },
               );
             }),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Row(
               children: <Widget>[
-                Text('조리 단계', style: AppTextStyles.subtitle),
+                Text('Steps', style: AppTextStyles.subtitle),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () {
@@ -246,7 +290,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   },
                   icon: const Icon(Icons.add, color: AppColors.primary),
                   label: Text(
-                    '단계 추가',
+                    'Add step',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -261,6 +305,8 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 draft: _steps[i],
                 decoration: _field,
                 canRemove: _steps.length > 1,
+                picker: _picker,
+                onChanged: () => setState(() {}),
                 onRemove: () {
                   setState(() {
                     _steps[i].dispose();
@@ -269,38 +315,53 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 },
               );
             }),
-            const SizedBox(height: 16),
-            Text('요리 평가 / 다이어리', style: AppTextStyles.subtitle),
             const SizedBox(height: 8),
-            Text(
-              '만족도 ${_satisfactionScore.toStringAsFixed(1)} / 5.0',
-              style: AppTextStyles.body,
-            ),
-            Slider(
-              value: _satisfactionScore,
-              min: 0,
-              max: 5,
-              divisions: 10,
-              activeColor: AppColors.swapHighlight,
-              label: _satisfactionScore.toStringAsFixed(1),
-              onChanged: (double v) {
-                setState(() => _satisfactionScore = v);
+            ExpansionTile(
+              initiallyExpanded: _showCookDiary,
+              onExpansionChanged: (bool open) {
+                setState(() => _showCookDiary = open);
               },
-            ),
-            TextFormField(
-              controller: _recommendationTag,
-              style: AppTextStyles.body,
-              decoration: _field(
-                '추천 태그',
-                hint: "microwave only! / 친구들에게 추천!",
+              tilePadding: EdgeInsets.zero,
+              title: Text(
+                'Cook diary (optional)',
+                style: AppTextStyles.subtitle,
               ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _cookNote,
-              style: AppTextStyles.body,
-              maxLines: 3,
-              decoration: _field('실전 메모 (선택)', hint: '간장을 반 스푼 줄일 것'),
+              children: <Widget>[
+                Text(
+                  'Satisfaction ${_satisfactionScore.toStringAsFixed(1)} / 5.0',
+                  style: AppTextStyles.body,
+                ),
+                Slider(
+                  value: _satisfactionScore,
+                  min: 0,
+                  max: 5,
+                  divisions: 10,
+                  activeColor: AppColors.swapHighlight,
+                  label: _satisfactionScore.toStringAsFixed(1),
+                  onChanged: (double v) {
+                    setState(() => _satisfactionScore = v);
+                  },
+                ),
+                TextFormField(
+                  controller: _recommendationTags,
+                  style: AppTextStyles.body,
+                  decoration: _field(
+                    'Tags (comma-separated, multiple OK)',
+                    hint: 'microwave only!, Must try!, Quick',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _cookNote,
+                  style: AppTextStyles.body,
+                  maxLines: 3,
+                  decoration: _field(
+                    'Cook note (optional)',
+                    hint: 'Use half a spoon less soy next time',
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -316,7 +377,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   ),
                 ),
                 child: const Text(
-                  '저장하기',
+                  'Save',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -332,14 +393,13 @@ class _IngredientDraft {
   final TextEditingController name = TextEditingController();
   final TextEditingController amount = TextEditingController(text: '1');
   final TextEditingController unit = TextEditingController(text: 'g');
-  final TextEditingController substitutions = TextEditingController();
   final TextEditingController storeTip = TextEditingController();
+  bool storeTipExpanded = false;
 
   void dispose() {
     name.dispose();
     amount.dispose();
     unit.dispose();
-    substitutions.dispose();
     storeTip.dispose();
   }
 }
@@ -347,6 +407,8 @@ class _IngredientDraft {
 class _StepDraft {
   final TextEditingController instruction = TextEditingController();
   final TextEditingController timerMinutes = TextEditingController();
+  String? imagePath;
+  bool extrasExpanded = false;
 
   void dispose() {
     instruction.dispose();
@@ -361,6 +423,7 @@ class _IngredientCard extends StatelessWidget {
     required this.decoration,
     required this.canRemove,
     required this.onRemove,
+    required this.onChanged,
   });
 
   final int index;
@@ -368,6 +431,7 @@ class _IngredientCard extends StatelessWidget {
   final InputDecoration Function(String label, {String? hint}) decoration;
   final bool canRemove;
   final VoidCallback onRemove;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -383,11 +447,12 @@ class _IngredientCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Text('재료 ${index + 1}', style: AppTextStyles.bodySmall),
+              Text('Ingredient ${index + 1}', style: AppTextStyles.bodySmall),
               const Spacer(),
               if (canRemove)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppColors.error),
                   onPressed: onRemove,
                 ),
             ],
@@ -395,7 +460,7 @@ class _IngredientCard extends StatelessWidget {
           TextFormField(
             controller: draft.name,
             style: AppTextStyles.body,
-            decoration: decoration('재료명'),
+            decoration: decoration('Name'),
           ),
           const SizedBox(height: 8),
           Row(
@@ -407,7 +472,7 @@ class _IngredientCard extends StatelessWidget {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: decoration('양'),
+                  decoration: decoration('Amount'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -415,28 +480,29 @@ class _IngredientCard extends StatelessWidget {
                 child: TextFormField(
                   controller: draft.unit,
                   style: AppTextStyles.body,
-                  decoration: decoration('단위', hint: 'g / ml / tbsp'),
+                  decoration: decoration('Unit', hint: 'g / ml / tbsp'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: draft.substitutions,
-            style: AppTextStyles.body,
-            decoration: decoration(
-              '현지 대체재 (쉼표로 구분, 선택)',
-              hint: 'Cayenne, Paprika',
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: draft.storeTip,
-            style: AppTextStyles.body,
-            decoration: decoration(
-              '마트 코너 팁 (선택)',
-              hint: "Trader Joe's Spice aisle",
-            ),
+          ExpansionTile(
+            initiallyExpanded: draft.storeTipExpanded,
+            onExpansionChanged: (bool open) {
+              draft.storeTipExpanded = open;
+              onChanged();
+            },
+            tilePadding: EdgeInsets.zero,
+            title: Text('Store tip (optional)', style: AppTextStyles.bodySmall),
+            children: <Widget>[
+              TextFormField(
+                controller: draft.storeTip,
+                style: AppTextStyles.body,
+                decoration: decoration(
+                  'Aisle tip',
+                  hint: "Trader Joe's Spice aisle",
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -451,6 +517,8 @@ class _StepCard extends StatelessWidget {
     required this.decoration,
     required this.canRemove,
     required this.onRemove,
+    required this.onChanged,
+    required this.picker,
   });
 
   final int stepNumber;
@@ -458,6 +526,16 @@ class _StepCard extends StatelessWidget {
   final InputDecoration Function(String label, {String? hint}) decoration;
   final bool canRemove;
   final VoidCallback onRemove;
+  final VoidCallback onChanged;
+  final ImagePicker picker;
+
+  Future<void> _pickPhoto() async {
+    final file = await picker.pickImage(source: ImageSource.gallery);
+    if (file != null) {
+      draft.imagePath = file.path;
+      onChanged();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +555,8 @@ class _StepCard extends StatelessWidget {
               const Spacer(),
               if (canRemove)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppColors.error),
                   onPressed: onRemove,
                 ),
             ],
@@ -486,17 +565,53 @@ class _StepCard extends StatelessWidget {
             controller: draft.instruction,
             style: AppTextStyles.body,
             maxLines: 3,
-            decoration: decoration('조리 지침'),
+            decoration: decoration('Instruction'),
           ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: draft.timerMinutes,
-            style: AppTextStyles.body,
-            keyboardType: TextInputType.number,
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.digitsOnly,
+          ExpansionTile(
+            initiallyExpanded: draft.extrasExpanded,
+            onExpansionChanged: (bool open) {
+              draft.extrasExpanded = open;
+              onChanged();
+            },
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              'Timer & photo (optional)',
+              style: AppTextStyles.bodySmall,
+            ),
+            children: <Widget>[
+              TextFormField(
+                controller: draft.timerMinutes,
+                style: AppTextStyles.body,
+                keyboardType: TextInputType.number,
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                decoration: decoration('Timer (minutes)'),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _pickPhoto,
+                  icon: const Icon(Icons.photo_outlined),
+                  label: Text(
+                    draft.imagePath == null
+                        ? 'Add step photo'
+                        : 'Change step photo',
+                  ),
+                ),
+              ),
+              if (draft.imagePath != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(draft.imagePath!),
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
             ],
-            decoration: decoration('타이머 (분, 선택)'),
           ),
         ],
       ),

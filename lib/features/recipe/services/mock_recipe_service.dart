@@ -1,11 +1,13 @@
 import '../models/recipe_model.dart';
 
-/// In-memory sample recipes for UI work before Firebase is wired up.
+/// In-memory sample recipes and pending rating queue (pre-Firebase).
 class MockRecipeService {
   MockRecipeService._();
 
   /// Mock uid for the signed-in user (My Log tests).
   static const String currentUserId = 'current_user_me';
+
+  static final List<String> _pendingRatingIds = <String>[];
 
   /// Returns all hard-coded recipes. No network or Firebase calls.
   static List<RecipeModel> getRecipes() =>
@@ -16,6 +18,38 @@ class MockRecipeService {
         _recipes.where((RecipeModel r) => r.authorId == currentUserId),
       );
 
+  /// Recipes waiting for the cooker's star rating after Cooking Mode.
+  static List<RecipeModel> getPendingRatings() {
+    final result = <RecipeModel>[];
+    for (final id in _pendingRatingIds) {
+      for (final recipe in _recipes) {
+        if (recipe.id == id) {
+          result.add(recipe);
+          break;
+        }
+      }
+    }
+    return List<RecipeModel>.unmodifiable(result);
+  }
+
+  /// Queues a recipe for rating after cooking finishes.
+  static void addPendingRating(String recipeId) {
+    if (!_pendingRatingIds.contains(recipeId)) {
+      _pendingRatingIds.add(recipeId);
+    }
+  }
+
+  /// Saves the cooker's rating and clears the pending flag.
+  static void submitPendingRating(String recipeId, double score) {
+    for (final recipe in _recipes) {
+      if (recipe.id == recipeId) {
+        recipe.satisfactionScore = score;
+        break;
+      }
+    }
+    _pendingRatingIds.remove(recipeId);
+  }
+
   /// Inserts a new recipe at the front of the in-memory list.
   static void addRecipe(RecipeModel recipe) {
     _recipes.insert(0, recipe);
@@ -24,150 +58,139 @@ class MockRecipeService {
   static final List<RecipeModel> _recipes = <RecipeModel>[
     RecipeModel(
       id: 'mock-spicy-tofu-jorim',
-      title: '매콤 두부조림',
-      description: '노릇하게 구운 두부를 간장·고춧가루 양념에 졸인 기본 밑반찬.',
+      title: 'Spicy Braised Tofu',
+      description: 'Pan-seared tofu simmered in soy–chili sauce.',
       authorId: currentUserId,
-      authorName: '철민',
-      authorTitle: 'K-반찬 장인',
+      authorName: 'Chulmin',
+      authorTitle: 'K-Banchan Craftsman',
       imageUrl:
           'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
-      category: '반찬',
+      category: 'Korean',
       cookingTimeMinutes: 20,
       ingredients: <Ingredient>[
-        Ingredient(name: '두부', amount: 400, unit: 'g'),
-        Ingredient(name: '진간장', amount: 2, unit: 'tbsp'),
-        Ingredient(name: '물', amount: 120, unit: 'ml'),
+        Ingredient(name: 'Tofu', amount: 400, unit: 'g'),
+        Ingredient(name: 'Soy sauce', amount: 2, unit: 'tbsp'),
+        Ingredient(name: 'Water', amount: 120, unit: 'ml'),
         Ingredient(
-          name: '고춧가루',
+          name: 'Gochugaru',
           amount: 1,
           unit: 'tbsp',
-          substitutions: <String>[
-            'Cayenne powder + Paprika',
-            'Crushed red pepper',
-          ],
           storeTip: "Trader Joe's Spice aisle",
         ),
-        Ingredient(name: '설탕', amount: 1, unit: 'tsp'),
-        Ingredient(name: '다진 마늘', amount: 1, unit: 'tsp'),
-        Ingredient(name: '식용유', amount: 1, unit: 'tbsp'),
+        Ingredient(name: 'Sugar', amount: 1, unit: 'tsp'),
+        Ingredient(name: 'Minced garlic', amount: 1, unit: 'tsp'),
+        Ingredient(name: 'Cooking oil', amount: 1, unit: 'tbsp'),
       ],
       steps: <RecipeStep>[
         RecipeStep(
           stepNumber: 1,
-          instruction: '두부를 한입 크기로 썰어 팬에 노릇하게 굽는다.',
+          instruction: 'Cut tofu into bite-size pieces and sear until golden.',
         ),
         RecipeStep(
           stepNumber: 2,
-          instruction: '진간장, 물, 고춧가루, 설탕, 마늘을 섞은 양념장을 붓는다.',
+          instruction: 'Pour in soy sauce, water, gochugaru, sugar, and garlic.',
         ),
         RecipeStep(
           stepNumber: 3,
-          instruction: '중약불에서 양념이 배도록 졸인다.',
+          instruction: 'Simmer on medium-low until the sauce thickens.',
           timerMinutes: 5,
         ),
       ],
       satisfactionScore: 4.5,
-      recommendationTag: '밥 도둑 보장! 밑반찬으로 강추',
+      recommendationTags: <String>['Rice thief guaranteed!', 'Weeknight banchan'],
       cookNote:
-          '다음엔 간장을 반 스푼 줄여도 좋을 듯. 두부는 키친타올로 꾹 눌러 수분 제거하면 더 노릇하게 구워짐.',
+          'Next time use half a spoon less soy. Pat tofu dry for a better sear.',
       createdAt: DateTime(2026, 8, 12),
     ),
     RecipeModel(
       id: 'mock-kimchi-bacon-pasta',
-      title: '김치 베이컨 파스타',
-      description: '신김치와 베이컨을 볶아 크림 소스에 버무린 퓨전 면 요리.',
+      title: 'Kimchi Bacon Pasta',
+      description: 'Creamy pasta tossed with sour kimchi and crispy bacon.',
       authorId: 'user_emily',
       authorName: 'Emily',
-      authorTitle: '퓨전 연금술사',
+      authorTitle: 'Fusion Alchemist',
       imageUrl:
           'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=800&q=80',
-      category: '면',
+      category: 'Fusion',
       cookingTimeMinutes: 25,
       ingredients: <Ingredient>[
-        Ingredient(name: '파스타면', amount: 200, unit: 'g'),
-        Ingredient(name: '베이컨', amount: 150, unit: 'g'),
-        Ingredient(name: '신김치', amount: 150, unit: 'g'),
+        Ingredient(name: 'Pasta', amount: 200, unit: 'g'),
+        Ingredient(name: 'Bacon', amount: 150, unit: 'g'),
+        Ingredient(name: 'Sour kimchi', amount: 150, unit: 'g'),
         Ingredient(
-          name: '생크림',
+          name: 'Heavy cream',
           amount: 120,
           unit: 'ml',
-          substitutions: <String>[
-            'Heavy Cream',
-            'Whole Milk + Butter',
-          ],
-          storeTip: '일반 미국 마트 Dairy 코너',
+          storeTip: 'Dairy aisle at most US grocery stores',
         ),
-        Ingredient(name: '올리브오일', amount: 1, unit: 'tbsp'),
-        Ingredient(name: '다진 마늘', amount: 2, unit: 'tsp'),
-        Ingredient(name: '파마산 치즈', amount: 20, unit: 'g'),
+        Ingredient(name: 'Olive oil', amount: 1, unit: 'tbsp'),
+        Ingredient(name: 'Minced garlic', amount: 2, unit: 'tsp'),
+        Ingredient(name: 'Parmesan', amount: 20, unit: 'g'),
       ],
       steps: <RecipeStep>[
         RecipeStep(
           stepNumber: 1,
-          instruction: '소금 넣은 물에 파스타면을 포장 시간보다 1분 덜 삶아 건진다.',
+          instruction: 'Boil pasta 1 minute under package time, then drain.',
         ),
         RecipeStep(
           stepNumber: 2,
-          instruction: '팬에 올리브오일을 두르고 베이컨을 바삭하게 볶는다.',
+          instruction: 'Crisp the bacon in olive oil.',
         ),
         RecipeStep(
           stepNumber: 3,
-          instruction: '신김치와 마늘을 넣고 볶다가 생크림을 부어 소스를 만든다.',
+          instruction: 'Stir-fry kimchi and garlic, then add cream.',
         ),
         RecipeStep(
           stepNumber: 4,
-          instruction: '면을 넣어 버무리고 파마산 치즈를 뿌려 마무리한다.',
+          instruction: 'Toss with pasta and finish with parmesan.',
         ),
       ],
       remixCount: 2,
       satisfactionScore: 4.8,
-      recommendationTag: '친구들에게 무조건 강추!',
-      cookNote: '신김치가 좀 더 묵을수록 맛이 깊어짐. 생크림 대신 우유+버터로 해도 충분히 맛있음.',
+      recommendationTags: <String>['Must share with friends!', 'Fusion'],
+      cookNote: 'Older kimchi tastes deeper. Milk + butter works if cream is out.',
       createdAt: DateTime(2026, 8, 20),
     ),
     RecipeModel(
       id: 'mock-beef-miyeokguk',
-      title: '소고기 미역국',
-      description: '불린 미역과 소고기를 참기름에 볶아 끓인 맑은 국.',
+      title: 'Beef Seaweed Soup',
+      description: 'Clear soup of soaked seaweed and beef in sesame oil.',
       authorId: 'user_alex',
       authorName: 'Alex',
       imageUrl:
           'https://images.unsplash.com/photo-1547592166-23acba624cda?auto=format&fit=crop&w=800&q=80',
-      category: '국',
+      category: 'Korean',
       cookingTimeMinutes: 40,
       ingredients: <Ingredient>[
-        Ingredient(name: '마른 미역', amount: 20, unit: 'g'),
-        Ingredient(name: '소고기', amount: 200, unit: 'g'),
-        Ingredient(name: '참기름', amount: 1, unit: 'tbsp'),
+        Ingredient(name: 'Dried seaweed', amount: 20, unit: 'g'),
+        Ingredient(name: 'Beef', amount: 200, unit: 'g'),
+        Ingredient(name: 'Sesame oil', amount: 1, unit: 'tbsp'),
         Ingredient(
-          name: '국간장',
+          name: 'Soup soy sauce',
           amount: 2,
           unit: 'tbsp',
-          substitutions: <String>[
-            'Fish Sauce (피시소스) + 간장 약간',
-          ],
-          storeTip: 'Whole Foods 아시안 섹션',
+          storeTip: 'Whole Foods Asian section',
         ),
-        Ingredient(name: '물', amount: 1200, unit: 'ml'),
-        Ingredient(name: '다진 마늘', amount: 1, unit: 'tsp'),
+        Ingredient(name: 'Water', amount: 1200, unit: 'ml'),
+        Ingredient(name: 'Minced garlic', amount: 1, unit: 'tsp'),
       ],
       steps: <RecipeStep>[
         RecipeStep(
           stepNumber: 1,
-          instruction: '마른 미역을 찬물에 불린 뒤 물기를 짜고 한입 크기로 자른다.',
+          instruction: 'Soak dried seaweed, squeeze dry, and cut bite-size.',
         ),
         RecipeStep(
           stepNumber: 2,
-          instruction: '냄비에 참기름을 두르고 소고기와 미역을 볶는다.',
+          instruction: 'Sauté beef and seaweed in sesame oil.',
         ),
         RecipeStep(
           stepNumber: 3,
-          instruction: '물을 붓고 국간장·마늘을 넣어 끓인다.',
+          instruction: 'Add water, soup soy, and garlic; simmer.',
           timerMinutes: 20,
         ),
       ],
       satisfactionScore: 4.2,
-      recommendationTag: '간편한 한 끼로 추천',
+      recommendationTags: <String>['Easy weeknight bowl'],
       createdAt: DateTime(2026, 9, 1),
     ),
   ];

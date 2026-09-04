@@ -1,31 +1,35 @@
-/// A single recipe ingredient, including local swap hints.
+/// A single recipe ingredient with optional store aisle tip.
 class Ingredient {
   Ingredient({
     required this.name,
     required this.amount,
     required this.unit,
-    this.substitutions = const <String>[],
     this.storeTip,
   });
 
   final String name;
   final double amount;
   final String unit;
-  final List<String> substitutions;
+
+  /// Optional aisle / store tip (e.g. Trader Joe's spice aisle).
   final String? storeTip;
 }
 
-/// One cooking instruction, optionally with a timer.
+/// One cooking instruction, optionally with a timer and photo.
 class RecipeStep {
   RecipeStep({
     required this.stepNumber,
     required this.instruction,
     this.timerMinutes,
+    this.imagePath,
   });
 
   final int stepNumber;
   final String instruction;
   final int? timerMinutes;
+
+  /// Local gallery file path for an optional step photo.
+  final String? imagePath;
 }
 
 /// Recipe diary entry with cook measures (aligned with PROJECT_SPEC §5).
@@ -43,7 +47,7 @@ class RecipeModel {
     required this.ingredients,
     required this.steps,
     this.satisfactionScore = 5.0,
-    this.recommendationTag = 'microwave only!',
+    this.recommendationTags = const <String>['microwave only!'],
     this.cookNote,
     this.parentRecipeId,
     this.remixCount = 0,
@@ -62,18 +66,16 @@ class RecipeModel {
   final List<Ingredient> ingredients;
   final List<RecipeStep> steps;
 
-  /// Author's satisfaction rating out of 5.0.
-  final double satisfactionScore;
+  /// Community / cook satisfaction rating out of 5.0.
+  double satisfactionScore;
 
-  /// Short recommendation label shown as a chip.
-  final String recommendationTag;
+  /// One or more recommendation tags shown as chips.
+  final List<String> recommendationTags;
 
   /// Optional real-cook tip memo from the author.
   final String? cookNote;
 
-  /// Original recipe id when this entry is a remix/fork; null if original.
   final String? parentRecipeId;
-
   final int remixCount;
   final DateTime createdAt;
 }

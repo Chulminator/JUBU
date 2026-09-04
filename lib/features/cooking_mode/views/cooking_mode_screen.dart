@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../recipe/models/recipe_model.dart';
+import '../../recipe/services/mock_recipe_service.dart';
 
 /// Hands-free cooking mode: large type, swipeable steps, per-step timer.
 class CookingModeScreen extends StatefulWidget {
@@ -111,19 +112,20 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
   }
 
   Future<void> _onComplete() async {
+    MockRecipeService.addPendingRating(widget.recipe.id);
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('요리 완료!'),
+          title: const Text('Cooking complete!'),
           content: Text(
-            '${widget.recipe.title}\n수고하셨습니다. 맛있게 드세요!',
+            '${widget.recipe.title}\nNice work. Rate it later in My Log.',
             style: AppTextStyles.body,
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('확인'),
+              child: const Text('OK'),
             ),
           ],
         );
@@ -174,7 +176,7 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.close),
-            tooltip: '닫기',
+            tooltip: 'Close',
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -251,7 +253,7 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
                                         : Icons.play_arrow,
                                   ),
                                   label: Text(
-                                    _timerRunning ? '일시정지' : '시작',
+                                    _timerRunning ? 'Pause' : 'Start',
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -268,7 +270,7 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
                                     ),
                                   ),
                                   icon: const Icon(Icons.refresh),
-                                  label: const Text('리셋'),
+                                  label: const Text('Reset'),
                                 ),
                               ],
                             ),
@@ -296,7 +298,7 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
                         side: const BorderSide(color: AppColors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: const Text('이전 단계'),
+                      child: const Text('Previous'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -310,7 +312,7 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
                         foregroundColor: AppColors.onPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text(isLast ? '요리 완료' : '다음 단계'),
+                      child: Text(isLast ? 'Done cooking' : 'Next'),
                     ),
                   ),
                 ],

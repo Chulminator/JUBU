@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -7,7 +9,7 @@ import '../services/mock_recipe_service.dart';
 import 'create_recipe_screen.dart';
 import 'recipe_detail_screen.dart';
 
-/// Triple-tab home: Explore / Friends / My Log + FAB to create a recipe.
+/// Triple-tab home: Explore / Friends / My Log + FAB.
 class RecipeFeedScreen extends StatefulWidget {
   const RecipeFeedScreen({super.key});
 
@@ -31,6 +33,7 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
   Widget build(BuildContext context) {
     final recipes = MockRecipeService.getRecipes();
     final myRecipes = MockRecipeService.getMyRecipes();
+    final pending = MockRecipeService.getPendingRatings();
 
     return DefaultTabController(
       length: 3,
@@ -68,16 +71,20 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
         ),
         body: TabBarView(
           children: <Widget>[
-            _ExploreGrid(recipes: recipes),
-            _FriendsList(recipes: recipes),
-            _MyLogGrid(recipes: myRecipes),
+            _RecipeOnlyMetaGrid(recipes: recipes),
+            _RecipeOnlyMetaList(recipes: recipes),
+            _MyLogView(
+              recipes: myRecipes,
+              pending: pending,
+              onRated: () => setState(() {}),
+            ),
           ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openCreateRecipe,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
-          tooltip: '새 레시피 작성',
+          tooltip: 'New recipe',
           child: const Icon(Icons.add),
         ),
       ),
@@ -85,8 +92,142 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
   }
 }
 
-class _ExploreGrid extends StatelessWidget {
-  const _ExploreGrid({required this.recipes});
+/// Feed card: photo, title, rating, tags, author, author title.
+class _RecipeMetaCard extends StatelessWidget {
+  const _RecipeMetaCard({required this.recipe, this.wide = false});
+
+  final RecipeModel recipe;
+  final bool wide;
+
+  Widget _cover() {
+    final url = recipe.imageUrl;
+    if (!url.startsWith('http')) {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+      }
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+        return ColoredBox(
+          color: AppColors.surfaceMuted,
+          child: Icon(Icons.restaurant, color: AppColors.textSecondary),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => RecipeDetailScreen(recipe: recipe),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              height: wide ? 160 : 110,
+              width: double.infinity,
+              child: _cover(),
+            ),
+            Padding(
+              padding: EdgeInsets.all(wide ? 14 : 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    recipe.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subtitle.copyWith(fontSize: 16),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: AppColors.swapHighlight,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        recipe.satisfactionScore.toStringAsFixed(1),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.swapHighlight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: recipe.recommendationTags.map((String tag) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryLight,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    recipe.authorName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (recipe.authorTitle != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      recipe.authorTitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeOnlyMetaGrid extends StatelessWidget {
+  const _RecipeOnlyMetaGrid({required this.recipes});
 
   final List<RecipeModel> recipes;
 
@@ -98,146 +239,18 @@ class _ExploreGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 0.68,
+        childAspectRatio: 0.62,
       ),
       itemCount: recipes.length,
       itemBuilder: (BuildContext context, int index) {
-        final recipe = recipes[index];
-        return _RecipeGridCard(recipe: recipe);
+        return _RecipeMetaCard(recipe: recipes[index]);
       },
     );
   }
 }
 
-/// Instagram-style grid of recipes authored by the current user.
-class _MyLogGrid extends StatelessWidget {
-  const _MyLogGrid({required this.recipes});
-
-  final List<RecipeModel> recipes;
-
-  @override
-  Widget build(BuildContext context) {
-    if (recipes.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            '아직 기록한 요리가 없습니다.\n우측 아래 + 버튼으로 추가해 보세요.',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodySmall,
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('My Cook Log', style: AppTextStyles.subtitle),
-              const SizedBox(height: 4),
-              Text(
-                '${recipes.length}개의 요리 기록',
-                style: AppTextStyles.bodySmall,
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.68,
-            ),
-            itemCount: recipes.length,
-            itemBuilder: (BuildContext context, int index) {
-              return _RecipeGridCard(recipe: recipes[index]);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RecipeGridCard extends StatelessWidget {
-  const _RecipeGridCard({required this.recipe});
-
-  final RecipeModel recipe;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => RecipeDetailScreen(recipe: recipe),
-            ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Expanded(
-              child: _RecipeImage(url: recipe.imageUrl),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    recipe.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.subtitle.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        '${recipe.cookingTimeMinutes} min',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 14,
-                        color: AppColors.swapHighlight,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        recipe.satisfactionScore.toStringAsFixed(1),
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.swapHighlight,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FriendsList extends StatelessWidget {
-  const _FriendsList({required this.recipes});
+class _RecipeOnlyMetaList extends StatelessWidget {
+  const _RecipeOnlyMetaList({required this.recipes});
 
   final List<RecipeModel> recipes;
 
@@ -247,161 +260,102 @@ class _FriendsList extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       itemCount: recipes.length,
       itemBuilder: (BuildContext context, int index) {
-        final recipe = recipes[index];
-        final tip = _firstStoreTip(recipe);
-
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(12),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => RecipeDetailScreen(recipe: recipe),
-                  ),
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    height: 200,
-                    width: double.infinity,
-                    child: _RecipeImage(url: recipe.imageUrl),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          recipe.authorName,
-                          style: AppTextStyles.subtitle,
-                        ),
-                        if (recipe.authorTitle != null) ...<Widget>[
-                          const SizedBox(height: 2),
-                          Text(
-                            recipe.authorTitle!,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.secondary,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Row(
-                          children: <Widget>[
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: AppColors.swapHighlight,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              recipe.satisfactionScore.toStringAsFixed(1),
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.swapHighlight,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondaryLight,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  recipe.recommendationTag,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.secondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(recipe.description, style: AppTextStyles.body),
-                        if (recipe.cookNote != null) ...<Widget>[
-                          const SizedBox(height: 8),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '"${recipe.cookNote}"',
-                              style: AppTextStyles.bodySmall,
-                            ),
-                          ),
-                        ],
-                        if (tip != null) ...<Widget>[
-                          const SizedBox(height: 8),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.swapHighlightLight,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              tip,
-                              style: AppTextStyles.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: SizedBox(
+            height: 280,
+            child: _RecipeMetaCard(recipe: recipes[index], wide: true),
           ),
         );
       },
     );
   }
-
-  static String? _firstStoreTip(RecipeModel recipe) {
-    for (final ingredient in recipe.ingredients) {
-      if (ingredient.storeTip != null && ingredient.storeTip!.isNotEmpty) {
-        return ingredient.storeTip;
-      }
-    }
-    return null;
-  }
 }
 
-class _RecipeImage extends StatelessWidget {
-  const _RecipeImage({required this.url});
+class _MyLogView extends StatelessWidget {
+  const _MyLogView({
+    required this.recipes,
+    required this.pending,
+    required this.onRated,
+  });
 
-  final String url;
+  final List<RecipeModel> recipes;
+  final List<RecipeModel> pending;
+  final VoidCallback onRated;
 
   @override
   Widget build(BuildContext context) {
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      errorBuilder:
-          (BuildContext context, Object error, StackTrace? stackTrace) {
-        return ColoredBox(
-          color: AppColors.surfaceMuted,
-          child: Icon(Icons.restaurant, color: AppColors.textSecondary),
-        );
-      },
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: <Widget>[
+        if (pending.isNotEmpty) ...<Widget>[
+          Text('Awaiting your rating', style: AppTextStyles.subtitle),
+          const SizedBox(height: 4),
+          Text(
+            'Finished Cooking Mode — tap to rate.',
+            style: AppTextStyles.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          ...pending.map(
+            (RecipeModel r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: AppColors.swapHighlightLight,
+                borderRadius: BorderRadius.circular(12),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.star_outline,
+                    color: AppColors.swapHighlight,
+                  ),
+                  title: Text(r.title, style: AppTextStyles.body),
+                  subtitle: const Text('Pending rating'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => RecipeDetailScreen(recipe: r),
+                      ),
+                    );
+                    onRated();
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Text('My Cook Log', style: AppTextStyles.subtitle),
+        const SizedBox(height: 4),
+        Text(
+          '${recipes.length} cook log${recipes.length == 1 ? '' : 's'}',
+          style: AppTextStyles.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        if (recipes.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'No cook logs yet.\nTap + to add one.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall,
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.62,
+            ),
+            itemCount: recipes.length,
+            itemBuilder: (BuildContext context, int index) {
+              return _RecipeMetaCard(recipe: recipes[index]);
+            },
+          ),
+      ],
     );
   }
 }

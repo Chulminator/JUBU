@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -5,9 +7,9 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/unit_converter.dart';
 import '../../cooking_mode/views/cooking_mode_screen.dart';
 import '../models/recipe_model.dart';
+import '../services/mock_recipe_service.dart';
 
-/// Read-only recipe detail. Ingredient amounts always pass through UnitConverter
-/// using the user's unit preference (placeholder until UserModel is wired).
+/// Vertical recipe detail: overview, ingredients, steps, optional rating.
 class RecipeDetailScreen extends StatefulWidget {
   const RecipeDetailScreen({super.key, required this.recipe});
 
@@ -18,8 +20,38 @@ class RecipeDetailScreen extends StatefulWidget {
 }
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
-  /// User unit preference. Default Metric; later read from UserModel.preferImperial.
+  /// User unit preference placeholder until UserModel is wired.
   bool isImperial = false;
+  double _pendingScore = 5.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pendingScore = widget.recipe.satisfactionScore;
+  }
+
+  bool get _isPendingRating => MockRecipeService.getPendingRatings()
+      .any((RecipeModel r) => r.id == widget.recipe.id);
+
+  Widget _coverImage() {
+    final url = widget.recipe.imageUrl;
+    if (url.startsWith('/') || url.contains(':\\') || !url.startsWith('http')) {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+      }
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+          ColoredBox(
+        color: AppColors.surfaceMuted,
+        child: const Center(child: Icon(Icons.restaurant, size: 48)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,142 +62,165 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text('Recipe'),
+        title: Text(recipe.title),
         actions: <Widget>[
           IconButton(
             icon: Icon(
               isImperial ? Icons.straighten : Icons.science_outlined,
             ),
-            tooltip: isImperial ? 'Imperial (tap to Metric)' : 'Metric (tap to Imperial)',
+            tooltip: isImperial
+                ? 'Imperial (tap for Metric)'
+                : 'Metric (tap for Imperial)',
             onPressed: () {
               setState(() => isImperial = !isImperial);
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // ----- hero image -----
-            SizedBox(
-              height: 220,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: <Widget>[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 200,
               width: double.infinity,
-              child: Image.network(
-                recipe.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (BuildContext context, Object error,
-                    StackTrace? stackTrace) {
-                  return ColoredBox(
-                    color: AppColors.surfaceMuted,
-                    child: const Center(
-                      child: Icon(Icons.restaurant, size: 48),
-                    ),
-                  );
-                },
-              ),
+              child: _coverImage(),
             ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  // ----- title -----
-                  Text(recipe.title, style: AppTextStyles.title),
-                  const SizedBox(height: 6),
-
-                  // ----- meta row -----
-                  Row(
-                    children: <Widget>[
-                      const Icon(Icons.timer_outlined,
-                          size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${recipe.cookingTimeMinutes} min',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.person_outline,
-                          size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        recipe.authorName,
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
+          ),
+          const SizedBox(height: 12),
+          Text(recipe.title, style: AppTextStyles.title),
+          const SizedBox(height: 6),
+          Text(
+            '${recipe.cookingTimeMinutes} min · ${recipe.category}',
+            style: AppTextStyles.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Text('by ${recipe.authorName}', style: AppTextStyles.bodySmall),
+          if (recipe.authorTitle != null) ...<Widget>[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.swapHighlightLight,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  recipe.authorTitle!,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w600,
                   ),
-
-                  // ----- author title badge -----
-                  if (recipe.authorTitle != null) ...<Widget>[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.swapHighlightLight,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        recipe.authorTitle!,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // ----- cook note card -----
-                  _CookNoteCard(recipe: recipe),
-
-                  const SizedBox(height: 20),
-
-                  // ----- ingredients (auto unit via UnitConverter) -----
-                  Text('Ingredients', style: AppTextStyles.subtitle),
-                  const SizedBox(height: 10),
-                  ...recipe.ingredients.map(
-                    (Ingredient ing) => _IngredientTile(
-                      ingredient: ing,
-                      isImperial: isImperial,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ----- steps -----
-                  Text('Steps', style: AppTextStyles.subtitle),
-                  const SizedBox(height: 10),
-                  ...recipe.steps.map(
-                    (step) => _StepRow(
-                      stepNumber: step.stepNumber,
-                      instruction: step.instruction,
-                      timerMinutes: step.timerMinutes,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 16),
+          _CookNoteCard(recipe: recipe),
+          const SizedBox(height: 12),
+          Text(recipe.description, style: AppTextStyles.body),
+          const SizedBox(height: 24),
+          Text('Ingredients', style: AppTextStyles.subtitle),
+          const SizedBox(height: 10),
+          ...recipe.ingredients.map(
+            (Ingredient ing) => _IngredientTile(
+              ingredient: ing,
+              isImperial: isImperial,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Steps', style: AppTextStyles.subtitle),
+          const SizedBox(height: 10),
+          ...recipe.steps.map(
+            (RecipeStep step) => _StepRow(
+              stepNumber: step.stepNumber,
+              instruction: step.instruction,
+              timerMinutes: step.timerMinutes,
+              imagePath: step.imagePath,
+            ),
+          ),
+          if (_isPendingRating) ...<Widget>[
+            const SizedBox(height: 24),
+            Text('Rate this cook', style: AppTextStyles.subtitle),
+            const SizedBox(height: 8),
+            Text(
+              'You finished Cooking Mode. Leave a star rating for your My Log.',
+              style: AppTextStyles.body,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List<Widget>.generate(5, (int i) {
+                final filled = _pendingScore >= i + 1;
+                final half = !filled && _pendingScore >= i + 0.5;
+                return IconButton(
+                  onPressed: () =>
+                      setState(() => _pendingScore = (i + 1).toDouble()),
+                  icon: Icon(
+                    half
+                        ? Icons.star_half_rounded
+                        : filled
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                    color: AppColors.swapHighlight,
+                    size: 36,
+                  ),
+                );
+              }),
+            ),
+            Text(
+              _pendingScore.toStringAsFixed(1),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.subtitle,
+            ),
+            Slider(
+              value: _pendingScore,
+              min: 0,
+              max: 5,
+              divisions: 10,
+              activeColor: AppColors.swapHighlight,
+              onChanged: (double v) => setState(() => _pendingScore = v),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                MockRecipeService.submitPendingRating(
+                  recipe.id,
+                  _pendingScore,
+                );
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Thanks for rating!')),
+                );
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('Submit rating'),
+            ),
+          ],
+        ],
       ),
-
-      // ----- bottom action bar -----
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                await Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => CookingModeScreen(recipe: widget.recipe),
+                    builder: (_) => CookingModeScreen(recipe: recipe),
                   ),
                 );
+                if (mounted) {
+                  setState(() {});
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -176,7 +231,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 ),
               ),
               child: const Text(
-                '요리 모드 시작',
+                'Start cooking mode',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
@@ -186,10 +241,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Cook Note card
-// ---------------------------------------------------------------------------
 
 class _CookNoteCard extends StatelessWidget {
   const _CookNoteCard({required this.recipe});
@@ -213,20 +264,18 @@ class _CookNoteCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // satisfaction stars + score
           Row(
             children: <Widget>[
-              ...List<Widget>.generate(5, (i) {
+              ...List<Widget>.generate(5, (int i) {
                 if (i < fullStars) {
                   return const Icon(Icons.star_rounded,
                       color: AppColors.swapHighlight, size: 20);
                 } else if (i == fullStars && hasHalf) {
                   return const Icon(Icons.star_half_rounded,
                       color: AppColors.swapHighlight, size: 20);
-                } else {
-                  return const Icon(Icons.star_outline_rounded,
-                      color: AppColors.swapHighlight, size: 20);
                 }
+                return const Icon(Icons.star_outline_rounded,
+                    color: AppColors.swapHighlight, size: 20);
               }),
               const SizedBox(width: 6),
               Text(
@@ -239,50 +288,36 @@ class _CookNoteCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-
-          // recommendation tag chip
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryLight,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              recipe.recommendationTag,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.secondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-
-          // cook note memo (optional)
-          if (recipe.cookNote != null) ...<Widget>[
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text('"', style: TextStyle(fontSize: 28, height: 1)),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    recipe.cookNote!,
-                    style: AppTextStyles.bodySmall,
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: recipe.recommendationTags.map((String tag) {
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.secondaryLight,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  tag,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
+              );
+            }).toList(),
+          ),
+          if (recipe.cookNote != null) ...<Widget>[
+            const SizedBox(height: 10),
+            Text('"${recipe.cookNote}"', style: AppTextStyles.bodySmall),
           ],
         ],
       ),
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Ingredient tile
-// ---------------------------------------------------------------------------
 
 class _IngredientTile extends StatelessWidget {
   const _IngredientTile({
@@ -297,18 +332,7 @@ class _IngredientTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final display = _displayAmountAndUnit();
     final amountText = UnitConverter.formatAmount(display.amount);
-
-    final hasSubstitutions = ingredient.substitutions.isNotEmpty;
-    final storeTip = ingredient.storeTip;
-    final hasStoreTip = storeTip != null && storeTip.isNotEmpty;
-
-    final tipLines = <String>[];
-    if (hasSubstitutions) {
-      tipLines.add('Substitutes: ${ingredient.substitutions.join(' / ')}');
-    }
-    if (hasStoreTip) {
-      tipLines.add('Store tip: $storeTip');
-    }
+    final tip = ingredient.storeTip;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -316,20 +340,17 @@ class _IngredientTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Expanded(
                 child: Text(ingredient.name, style: AppTextStyles.body),
               ),
-              const SizedBox(width: 8),
               Text(
                 '$amountText ${display.unit}',
-                style:
-                    AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
-          if (tipLines.isNotEmpty) ...<Widget>[
+          if (tip != null && tip.isNotEmpty) ...<Widget>[
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
@@ -338,10 +359,7 @@ class _IngredientTile extends StatelessWidget {
                 color: AppColors.swapHighlightLight,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                '💡 ${tipLines.join('\n')}',
-                style: AppTextStyles.bodySmall,
-              ),
+              child: Text('💡 $tip', style: AppTextStyles.bodySmall),
             ),
           ],
         ],
@@ -349,12 +367,9 @@ class _IngredientTile extends StatelessWidget {
     );
   }
 
-  /// Always routes through [UnitConverter] based on [isImperial].
-  /// Spoon units (tbsp/tsp) keep their amount and label.
   ({double amount, String unit}) _displayAmountAndUnit() {
     final from = ingredient.unit.toLowerCase();
     var to = from;
-
     if (isImperial) {
       if (from == 'g') {
         to = 'oz';
@@ -368,30 +383,29 @@ class _IngredientTile extends StatelessWidget {
         to = 'ml';
       }
     }
-
-    final converted = UnitConverter.convert(
-      amount: ingredient.amount,
-      fromUnit: from,
-      toUnit: to,
+    return (
+      amount: UnitConverter.convert(
+        amount: ingredient.amount,
+        fromUnit: from,
+        toUnit: to,
+      ),
+      unit: to,
     );
-    return (amount: converted, unit: to);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Step row
-// ---------------------------------------------------------------------------
 
 class _StepRow extends StatelessWidget {
   const _StepRow({
     required this.stepNumber,
     required this.instruction,
     required this.timerMinutes,
+    required this.imagePath,
   });
 
   final int stepNumber;
   final String instruction;
   final int? timerMinutes;
+  final String? imagePath;
 
   @override
   Widget build(BuildContext context) {
@@ -406,7 +420,6 @@ class _StepRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // step number badge — left-aligned, same baseline as text
             Container(
               width: 28,
               height: 28,
@@ -432,19 +445,27 @@ class _StepRow extends StatelessWidget {
                   Text(instruction, style: AppTextStyles.body),
                   if (timerMinutes != null) ...<Widget>[
                     const SizedBox(height: 6),
-                    Row(
-                      children: <Widget>[
-                        const Icon(Icons.timer_outlined,
-                            size: 14, color: AppColors.secondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$timerMinutes min',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Timer: $timerMinutes min',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  if (imagePath != null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(imagePath!),
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (BuildContext context, Object error,
+                                StackTrace? stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
                     ),
                   ],
                 ],

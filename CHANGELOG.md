@@ -11,6 +11,60 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-04 13:02] [docs]
+
+- **생성/수정된 파일**
+  - `PROJECT_MANUAL.md` (전면 갱신)
+  - `CHANGELOG.md` (수정)
+- **핵심 변경**
+  - 매뉴얼을 현재 구현 상태(피드·상세 세로 스크롤·요리 모드·별점 대기·작성 폼·영문 UI·다중 태그·갤러리) 기준으로 다시 작성.
+  - 오래된 Hello World / substitutions / 좌우 탭 상세 / 카테고리 칩 안내 제거.
+
+## [2026-09-04 12:44] [feedback]
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Detail screen: removed Overview / Ingredients / Steps tabs and horizontal PageView.
+  - Single vertical `ListView` column: cover → meta → cook note → ingredients → steps → rating (if pending).
+
+## [2026-09-04 12:34] [feedback]
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/services/mock_recipe_service.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Category: text field only (suggested chips removed).
+  - Tags: `recommendationTags` (List) via comma-separated TextEditingController.
+  - Removed Optional cover URL section.
+  - Feed cards show photo + title again, plus rating, tags, author, author title.
+
+## [2026-09-04 12:03] [feedback]
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/services/mock_recipe_service.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/cooking_mode/views/cooking_mode_screen.dart`
+  - `android/app/src/main/AndroidManifest.xml`
+  - `pubspec.yaml` (`image_picker`)
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Create form: category chips + custom text, gallery cover pick, substitutions removed, optional fields folded, optional step photos.
+  - Detail: horizontal PageView (Overview / Ingredients / Steps / Rate when pending).
+  - After Cooking Mode complete → pending rating queue; rate from Rate page or My Log.
+  - Feed cards show only rating, tag, author, author title. All in-app UI strings in English.
+
 ## [2026-09-03 15:51] Step 8
 
 - **생성/수정된 파일**
