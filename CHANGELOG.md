@@ -11,6 +11,23 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-08 15:45] Step 9
+
+- **생성/수정된 파일**
+  - `lib/features/auth/models/user_model.dart` (신규)
+  - `lib/features/auth/providers/user_provider.dart` (신규)
+  - `lib/features/auth/views/onboarding_screen.dart` (신규)
+  - `lib/main.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - `UserModel` / `UserProvider`(인메모리)와 온보딩 화면(닉네임·Metric/Imperial·선호 식단) 추가.
+  - `main`에 `ChangeNotifierProvider` 주입, 시작 화면을 온보딩으로 변경.
+  - 상세 화면은 로컬 `isImperial` 토글 대신 `UserProvider.preferImperial` + `UnitConverter`로 전역 반영.
+  - 피드 AppBar 프로필 아이콘으로 온보딩(설정) 재진입 가능.
+
 ## [2026-09-04 13:02] [docs]
 
 - **생성/수정된 파일**

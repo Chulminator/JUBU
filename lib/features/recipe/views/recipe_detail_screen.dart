@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/unit_converter.dart';
+import '../../auth/providers/user_provider.dart';
 import '../../cooking_mode/views/cooking_mode_screen.dart';
 import '../models/recipe_model.dart';
 import '../services/mock_recipe_service.dart';
@@ -20,8 +22,6 @@ class RecipeDetailScreen extends StatefulWidget {
 }
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
-  /// User unit preference placeholder until UserModel is wired.
-  bool isImperial = false;
   double _pendingScore = 5.0;
 
   @override
@@ -56,6 +56,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final recipe = widget.recipe;
+    final isImperial =
+        context.watch<UserProvider>().currentUser.preferImperial;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -63,19 +65,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         title: Text(recipe.title),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(
-              isImperial ? Icons.straighten : Icons.science_outlined,
-            ),
-            tooltip: isImperial
-                ? 'Imperial (tap for Metric)'
-                : 'Metric (tap for Imperial)',
-            onPressed: () {
-              setState(() => isImperial = !isImperial);
-            },
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),

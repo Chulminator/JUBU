@@ -14,9 +14,10 @@
 **JUBU** 는 해외(특히 미국)에서 반찬·요리를 기록하고 나누는 Flutter 앱입니다.
 
 지금 할 수 있는 것:
+- 첫 화면 **온보딩**에서 닉네임·계량 단위·선호 식단 설정
 - Explore / Friends / My Log 피드에서 레시피 카드 보기
 - 카드 눌러 상세 보기 (세로 스크롤)
-- 단위 테스트 아이콘으로 g↔oz, ml↔cup 변환 확인
+- **전역 단위 설정**(Metric ↔ Imperial)에 따라 상세 재료 단위 자동 변환
 - **Start cooking mode** 로 단계별 요리 모드 + 타이머
 - 요리 완료 후 **별점 대기(My Log)** → 상세에서 별점 제출
 - 오른쪽 아래 **+** 로 새 레시피 / 요리 일지 작성 (갤러리 사진 포함)
@@ -37,11 +38,39 @@ flutter run -d android
 
 기기가 안 보이면 `flutter devices` 로 확인하세요.
 
-성공 기준: 주황 AppBar에 **JUBU**, 아래 탭 **Explore | Friends | My Log**, 오른쪽 아래 **+** 버튼.
+성공 기준: 온보딩 화면(**Welcome to JUBU**) → **Start JUBU** 후, 주황 AppBar에 **JUBU**, 아래 탭 **Explore | Friends | My Log**, 오른쪽 아래 **+** 버튼.
 
 ---
 
 ## 3. 화면별 테스트 가이드 (지금 구현된 것)
+
+### 3.0 온보딩 · 전역 단위 설정 (`OnboardingScreen` + `UserProvider`)
+
+앱을 켜면 **먼저 온보딩**이 뜹니다. Firebase 로그인 없이 메모리(`UserProvider`)만 사용합니다.
+
+**온보딩에서 설정하는 것**
+1. **Nickname** — 표시 이름
+2. **Measurement units** — **Metric** (g, ml) vs **Imperial** (oz, cup) 카드 선택
+3. **Preferred cuisines** — Korean / Fusion / Western / Quick Meal 등 `FilterChip` 다중 선택
+4. **Start JUBU** — 선택을 `UserProvider`에 저장하고 피드로 이동
+
+**피드에서 다시 바꾸기**
+- AppBar 오른쪽 **사람(프로필) 아이콘** → **Profile settings**
+- 단위를 바꾼 뒤 **Save** → 피드로 돌아옴
+
+#### Metric ↔ Imperial 가 상세 재료에 바로 반영되는지 확인
+
+1. 온보딩(또는 프로필)에서 **Metric** 선택 → **Start JUBU** / **Save**
+2. Explore에서 **Spicy Braised Tofu** 등 카드 → 상세
+3. **Ingredients**에서 `400 g`, `120 ml`처럼 **g / ml** 가 보이는지 확인
+4. 뒤로 가 피드 → 프로필 아이콘 → **Imperial** 선택 → **Save**
+5. 같은 레시피 상세를 다시 열면 (이미 열려 있으면 뒤로 갔다가 다시 진입) 재료가 약 **`14.11 oz`**, **`0.5 cup`** 로 바뀌는지 확인  
+   - 상세는 `context.watch<UserProvider>().currentUser.preferImperial` 를 읽고 `UnitConverter`로 변환합니다.
+6. `tbsp` / `tsp` 는 단위 설정과 관계없이 그대로여야 합니다.
+
+AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 온보딩/프로필에서만 바꿉니다.
+
+---
 
 ### 3.1 피드 (`RecipeFeedScreen`)
 
@@ -81,12 +110,12 @@ flutter run -d android
 **레이아웃:** 탭 없음. **한 화면 세로 스크롤**  
 순서: 커버 사진 → 제목/시간/카테고리/작성자 → 요리 노트 카드(별·태그·메모) → **Ingredients** → **Steps** → (별점 대기일 때만) **Rate this cook**
 
-**단위 변환 (테스트용)**
-- AppBar 오른쪽 아이콘(시험관/자)을 누르면 Metric ↔ Imperial 전환
-- 기본 Metric: `400 g`, `120 ml`
+**단위 변환 (전역 설정)**
+- `UserProvider.currentUser.preferImperial` 값에 따라 자동 적용 (상세 AppBar 토글 없음)
+- Metric: `400 g`, `120 ml`
 - Imperial: 약 `14.11 oz`, `0.5 cup`
 - `tbsp` / `tsp` 는 그대로
-- 변환은 항상 `UnitConverter` 통과
+- 바꾸는 방법: §3.0 온보딩/프로필 설정 참고
 
 **Store tip:** 재료에 tip이 있으면 Ingredients 아래 노란 💡 박스 (substitutions 입력/표시는 **없음**)
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../auth/views/onboarding_screen.dart';
 import '../models/recipe_model.dart';
 import '../services/mock_recipe_service.dart';
 import 'create_recipe_screen.dart';
@@ -56,6 +57,18 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
               icon: const Icon(Icons.notifications_outlined),
               onPressed: () {},
               tooltip: 'Notifications',
+            ),
+            IconButton(
+              icon: const Icon(Icons.person_outline),
+              tooltip: 'Profile / units',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        const OnboardingScreen(fromSettings: true),
+                  ),
+                );
+              },
             ),
           ],
           bottom: TabBar(
