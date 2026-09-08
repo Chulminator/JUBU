@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../recipe/views/recipe_feed_screen.dart';
 import '../providers/user_provider.dart';
+import '../services/auth_service.dart';
 
 /// Onboarding / profile preferences: nickname, units, cuisines.
 class OnboardingScreen extends StatefulWidget {
@@ -71,6 +72,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           preferImperial: _preferImperial,
           preferredCuisines: _selectedCuisines.toList(),
         );
+
+    final AuthService auth = context.read<AuthService>();
+    if (auth.needsOnboarding) {
+      // Stay under AuthGate; flag clear → Feed.
+      auth.completeOnboarding();
+      return;
+    }
 
     if (widget.fromSettings) {
       Navigator.of(context).pop();

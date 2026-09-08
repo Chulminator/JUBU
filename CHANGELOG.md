@@ -11,6 +11,34 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-08 17:50] Step 10
+
+- **생성/수정된 파일**
+  - `lib/features/auth/services/auth_service.dart` (신규)
+  - `lib/features/auth/views/login_screen.dart` (신규)
+  - `lib/features/auth/views/auth_gate.dart` (신규)
+  - `lib/main.dart`
+  - `lib/features/auth/views/onboarding_screen.dart`
+  - `pubspec.yaml` (`google_sign_in`)
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Firebase Auth `AuthService`(Google / 익명 / 로그아웃, `authStateChanges`) 추가.
+  - `LoginScreen` + `AuthGate`로 비로그인→로그인, 신규→온보딩, 기존/게스트→피드 분기.
+  - `main`에서 `Firebase.initializeApp` 후 `AuthGate`를 home으로 설정.
+
+## [2026-09-08 17:40] Auth entry
+
+- **생성/수정된 파일**
+  - `lib/features/auth/views/auth_entry_screen.dart` (신규)
+  - `lib/main.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 앱 시작 화면을 Sign in / Sign up 선택(`AuthEntryScreen`)으로 변경.
+  - Sign in → Mock으로 바로 피드, Sign up → 온보딩(프로필·단위·식단) 후 피드.
+  - 실제 Firebase/Google Auth는 아직 연동하지 않음.
+
 ## [2026-09-08 15:45] Step 9
 
 - **생성/수정된 파일**

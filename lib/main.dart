@@ -1,11 +1,18 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants/app_colors.dart';
 import 'features/auth/providers/user_provider.dart';
-import 'features/auth/views/onboarding_screen.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/auth/views/auth_gate.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MainApp());
 }
 
@@ -14,8 +21,15 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<UserProvider>(
-      create: (_) => UserProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        ChangeNotifierProvider<UserProvider>(
+          create: (_) => UserProvider(),
+        ),
+      ],
       child: MaterialApp(
         title: 'JUBU',
         debugShowCheckedModeBanner: false,
@@ -33,7 +47,7 @@ class MainApp extends StatelessWidget {
             foregroundColor: AppColors.onPrimary,
           ),
         ),
-        home: const OnboardingScreen(),
+        home: const AuthGate(),
       ),
     );
   }

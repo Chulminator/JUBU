@@ -4,8 +4,8 @@
 
 **중요**
 - 화면 기준: **Android 폰 / 에뮬레이터** (`flutter run -d android`)
-- 앱 안의 버튼·탭·안내 문구는 **영어**입니다. (이 매뉴얼만 한국어)
-- Firebase 로그인/클라우드 저장은 **아직 없습니다.** 데이터는 앱 메모리(Mock)에만 있습니다.
+- 로그인 화면 일부 문구는 **한국어**, 그 외 앱 UI는 대체로 **영어**입니다. (이 매뉴얼은 한국어)
+- Firebase **Auth**는 연동됨. 레시피 등 데이터는 아직 앱 메모리(Mock)입니다.
 
 ---
 
@@ -14,7 +14,9 @@
 **JUBU** 는 해외(특히 미국)에서 반찬·요리를 기록하고 나누는 Flutter 앱입니다.
 
 지금 할 수 있는 것:
-- 첫 화면 **온보딩**에서 닉네임·계량 단위·선호 식단 설정
+- **Firebase Auth** 로그인 화면: Google 계정 / 로그인 없이 둘러보기(게스트)
+- 신규 Google 유저 → 온보딩(닉네임·단위·식단) → 피드
+- 기존/게스트 → 바로 피드
 - Explore / Friends / My Log 피드에서 레시피 카드 보기
 - 카드 눌러 상세 보기 (세로 스크롤)
 - **전역 단위 설정**(Metric ↔ Imperial)에 따라 상세 재료 단위 자동 변환
@@ -22,7 +24,7 @@
 - 요리 완료 후 **별점 대기(My Log)** → 상세에서 별점 제출
 - 오른쪽 아래 **+** 로 새 레시피 / 요리 일지 작성 (갤러리 사진 포함)
 
-아직 없는 것: Google 로그인, Firestore 저장, 팔로우 소셜, 인분 조절, 리믹스 UI
+아직 없는 것: Firestore 레시피 저장, 팔로우 소셜, 인분 조절, 리믹스 UI
 
 ---
 
@@ -38,21 +40,58 @@ flutter run -d android
 
 기기가 안 보이면 `flutter devices` 로 확인하세요.
 
-성공 기준: 온보딩 화면(**Welcome to JUBU**) → **Start JUBU** 후, 주황 AppBar에 **JUBU**, 아래 탭 **Explore | Friends | My Log**, 오른쪽 아래 **+** 버튼.
+성공 기준: **LoginScreen**(JUBU + Google / 둘러보기) → (신규면 온보딩) → 주황 AppBar **JUBU**, 탭 **Explore | Friends | My Log**, **+** 버튼.
 
 ---
 
 ## 3. 화면별 테스트 가이드 (지금 구현된 것)
 
-### 3.0 온보딩 · 전역 단위 설정 (`OnboardingScreen` + `UserProvider`)
+### 3.0 로그인 (`LoginScreen` + `AuthGate` + `AuthService`)
 
-앱을 켜면 **먼저 온보딩**이 뜹니다. Firebase 로그인 없이 메모리(`UserProvider`)만 사용합니다.
+앱을 켜면 Firebase 초기화 후 **AuthGate**가 인증 상태를 보고 화면을 고릅니다.
+
+| 상태 | 화면 |
+|------|------|
+| 비로그인 | `LoginScreen` |
+| 로그인 + 신규(단위 설정 전) | `OnboardingScreen` |
+| 로그인 + 기존/게스트 | `RecipeFeedScreen` |
+
+**LoginScreen에서 확인할 것**
+- 중앙 **JUBU** 로고 텍스트
+- 소개: *미국 거주 한인들을 위한 요리 다이어리 & 레시피*
+- **Google 계정으로 시작하기** — Google 계정 선택 → Firebase Auth
+- **로그인 없이 둘러보기** — 익명(게스트) 로그인 → 바로 피드 (온보딩 없음)
+
+#### Google 로그인 테스트
+
+1. Firebase Console (`jubu-9d725`) → Authentication → **Google** 및 **Anonymous** 사용 설정이 켜져 있는지 확인
+2. Android: 디버그 **SHA-1**을 Firebase Android 앱에 등록했는지 확인 (`keytool` / `gradle signingReport`)
+3. `flutter run -d android`
+4. **Google 계정으로 시작하기** → 계정 선택
+5. **첫 Google 가입**이면 온보딩(닉네임·Metric/Imperial·식단) → **Start JUBU** → 피드
+6. 앱을 완전히 종료했다가 다시 켜서 세션이 유지되면 **온보딩 없이 피드**로 가야 합니다
+7. 계정 선택을 취소하면 로그인 화면에 그대로 있어야 합니다 (에러로 죽지 않음)
+
+#### 게스트(로그인 없이 둘러보기) 테스트
+
+1. 로그인 화면에서 **로그인 없이 둘러보기** 탭
+2. 온보딩 없이 **피드**가 열리는지 확인
+3. 상세 단위 등은 기존 `UserProvider` 기본값(Metric)으로 동작
+
+**참고:** 레시피 Firestore 저장은 아직 없습니다. Auth 분기만 동작합니다.  
+이전 Mock용 `AuthEntryScreen`(Sign in/Sign up)은 더 이상 `home`이 아닙니다.
+
+---
+
+### 3.0-b 온보딩 · 전역 단위 설정 (`OnboardingScreen` + `UserProvider`)
+
+**신규 Google 유저** 경로로 들어올 때 온보딩이 뜹니다. 선호값은 아직 기기 메모리(`UserProvider`)에만 저장됩니다.
 
 **온보딩에서 설정하는 것**
 1. **Nickname** — 표시 이름
 2. **Measurement units** — **Metric** (g, ml) vs **Imperial** (oz, cup) 카드 선택
 3. **Preferred cuisines** — Korean / Fusion / Western / Quick Meal 등 `FilterChip` 다중 선택
-4. **Start JUBU** — 선택을 `UserProvider`에 저장하고 피드로 이동
+4. **Start JUBU** — `UserProvider` 저장 + `AuthService.completeOnboarding()` → 피드
 
 **피드에서 다시 바꾸기**
 - AppBar 오른쪽 **사람(프로필) 아이콘** → **Profile settings**
@@ -60,7 +99,7 @@ flutter run -d android
 
 #### Metric ↔ Imperial 가 상세 재료에 바로 반영되는지 확인
 
-1. 온보딩(또는 프로필)에서 **Metric** 선택 → **Start JUBU** / **Save**
+1. 온보딩(또는 피드 프로필)에서 **Metric** 선택 → **Start JUBU** / **Save**
 2. Explore에서 **Spicy Braised Tofu** 등 카드 → 상세
 3. **Ingredients**에서 `400 g`, `120 ml`처럼 **g / ml** 가 보이는지 확인
 4. 뒤로 가 피드 → 프로필 아이콘 → **Imperial** 선택 → **Save**
