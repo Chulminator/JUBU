@@ -23,10 +23,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
@@ -60,7 +57,6 @@ class DefaultFirebaseOptions {
     projectId: 'jubu-9d725',
     storageBucket: 'jubu-9d725.firebasestorage.app',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyB-NdkHvRYmGhHNSraSorSj7Jf5ng8e-TU',
     appId: '1:190539958945:ios:5c368ea9fa6da5c53a7ee0',
@@ -79,5 +75,14 @@ class DefaultFirebaseOptions {
     authDomain: 'jubu-9d725.firebaseapp.com',
     storageBucket: 'jubu-9d725.firebasestorage.app',
     measurementId: 'G-GJK3N21BQ1',
+  );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyB-NdkHvRYmGhHNSraSorSj7Jf5ng8e-TU',
+    appId: '1:190539958945:ios:5c368ea9fa6da5c53a7ee0',
+    messagingSenderId: '190539958945',
+    projectId: 'jubu-9d725',
+    storageBucket: 'jubu-9d725.firebasestorage.app',
+    iosClientId: '190539958945-dd26h23vgnh1nkarj0l6ttp0i632n542.apps.googleusercontent.com',
+    iosBundleId: 'com.example.jubu',
   );
 }

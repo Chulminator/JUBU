@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../auth/services/auth_service.dart';
 import '../../auth/views/onboarding_screen.dart';
 import '../models/recipe_model.dart';
 import '../services/mock_recipe_service.dart';
@@ -28,6 +30,59 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<void> _openSettingsMenu() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.tune),
+                title: const Text('Profile & units'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          const OnboardingScreen(fromSettings: true),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: AppColors.error),
+                title: Text(
+                  'Sign out',
+                  style: AppTextStyles.body.copyWith(color: AppColors.error),
+                ),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await context.read<AuthService>().signOut();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -59,16 +114,9 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
               tooltip: 'Notifications',
             ),
             IconButton(
-              icon: const Icon(Icons.person_outline),
-              tooltip: 'Profile / units',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        const OnboardingScreen(fromSettings: true),
-                  ),
-                );
-              },
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: _openSettingsMenu,
             ),
           ],
           bottom: TabBar(
@@ -149,6 +197,7 @@ class _RecipeMetaCard extends StatelessWidget {
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: wide ? MainAxisSize.min : MainAxisSize.max,
           children: <Widget>[
             SizedBox(
               height: wide ? 160 : 110,
@@ -159,6 +208,7 @@ class _RecipeMetaCard extends StatelessWidget {
               padding: EdgeInsets.all(wide ? 14 : 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Text(
                     recipe.title,
@@ -275,10 +325,7 @@ class _RecipeOnlyMetaList extends StatelessWidget {
       itemBuilder: (BuildContext context, int index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-            height: 280,
-            child: _RecipeMetaCard(recipe: recipes[index], wide: true),
-          ),
+          child: _RecipeMetaCard(recipe: recipes[index], wide: true),
         );
       },
     );

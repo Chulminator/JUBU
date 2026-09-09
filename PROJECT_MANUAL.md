@@ -4,19 +4,20 @@
 
 **중요**
 - 화면 기준: **Android 폰 / 에뮬레이터** (`flutter run -d android`)
-- 로그인 화면 일부 문구는 **한국어**, 그 외 앱 UI는 대체로 **영어**입니다. (이 매뉴얼은 한국어)
+- 앱 UI는 **영어**입니다. (이 매뉴얼만 한국어)
 - Firebase **Auth**는 연동됨. 레시피 등 데이터는 아직 앱 메모리(Mock)입니다.
 
 ---
 
 ## 1. 앱이 뭔가요?
 
-**JUBU** 는 해외(특히 미국)에서 반찬·요리를 기록하고 나누는 Flutter 앱입니다.
+**JUBU** 는 어디서든 요리를 기록·공유하는 Flutter 앱입니다 (해외 거주·현지 재료·단위 차이를 염두에 둔 설계).
 
 지금 할 수 있는 것:
-- **Firebase Auth** 로그인 화면: Google 계정 / 로그인 없이 둘러보기(게스트)
-- 신규 Google 유저 → 온보딩(닉네임·단위·식단) → 피드
-- 기존/게스트 → 바로 피드
+- **Firebase Auth** 로그인 화면: **Sign in** / **Sign up** / **Proceed without it**
+- **Sign up** → 온보딩(닉네임·단위·식단) → 피드
+- **Sign in** / 게스트 → 바로 피드
+- AppBar **설정(톱니바퀴)** → Profile & units / Sign out
 - Explore / Friends / My Log 피드에서 레시피 카드 보기
 - 카드 눌러 상세 보기 (세로 스크롤)
 - **전역 단위 설정**(Metric ↔ Imperial)에 따라 상세 재료 단위 자동 변환
@@ -40,7 +41,7 @@ flutter run -d android
 
 기기가 안 보이면 `flutter devices` 로 확인하세요.
 
-성공 기준: **LoginScreen**(JUBU + Google / 둘러보기) → (신규면 온보딩) → 주황 AppBar **JUBU**, 탭 **Explore | Friends | My Log**, **+** 버튼.
+성공 기준: **LoginScreen**(Sign in / Sign up / Proceed without it) → (Sign up이면 온보딩) → 주황 AppBar **JUBU** + 설정 톱니바퀴, 탭 **Explore | Friends | My Log**, **+** 버튼.
 
 ---
 
@@ -53,33 +54,61 @@ flutter run -d android
 | 상태 | 화면 |
 |------|------|
 | 비로그인 | `LoginScreen` |
-| 로그인 + 신규(단위 설정 전) | `OnboardingScreen` |
-| 로그인 + 기존/게스트 | `RecipeFeedScreen` |
+| 로그인 + Sign up(온보딩 필요) | `OnboardingScreen` |
+| 로그인 + Sign in / 게스트 | `RecipeFeedScreen` |
 
 **LoginScreen에서 확인할 것**
 - 중앙 **JUBU** 로고 텍스트
-- 소개: *미국 거주 한인들을 위한 요리 다이어리 & 레시피*
-- **Google 계정으로 시작하기** — Google 계정 선택 → Firebase Auth
-- **로그인 없이 둘러보기** — 익명(게스트) 로그인 → 바로 피드 (온보딩 없음)
+- 소개: *Your cook diary & recipe companion wherever you live.*
+- **Sign in** — Google → 피드 (온보딩 스킵)
+- **Sign up** — Google → 온보딩 → 피드
+- **Proceed without it** — 익명(게스트) → 피드
 
-#### Google 로그인 테스트
+#### Google 로그인 테스트 (Android — 권장)
 
-1. Firebase Console (`jubu-9d725`) → Authentication → **Google** 및 **Anonymous** 사용 설정이 켜져 있는지 확인
-2. Android: 디버그 **SHA-1**을 Firebase Android 앱에 등록했는지 확인 (`keytool` / `gradle signingReport`)
+1. Firebase Console (`jubu-9d725`) → Authentication → **Google** 및 **Anonymous** 사용 설정
+2. Android: 디버그 **SHA-1**을 Firebase Android 앱에 등록 (`keytool` / `gradle signingReport`)
 3. `flutter run -d android`
-4. **Google 계정으로 시작하기** → 계정 선택
-5. **첫 Google 가입**이면 온보딩(닉네임·Metric/Imperial·식단) → **Start JUBU** → 피드
-6. 앱을 완전히 종료했다가 다시 켜서 세션이 유지되면 **온보딩 없이 피드**로 가야 합니다
-7. 계정 선택을 취소하면 로그인 화면에 그대로 있어야 합니다 (에러로 죽지 않음)
+4. **Sign up** → 계정 선택 → 온보딩 → **Start JUBU** → 피드
+5. 설정 → **Sign out** → **Sign in** → 같은 계정이면 **온보딩 없이 피드**
+6. 계정 선택 취소 시 로그인 화면 유지 (크래시 없음)
 
-#### 게스트(로그인 없이 둘러보기) 테스트
+#### Google 로그인 테스트 (Chrome / Web)
 
-1. 로그인 화면에서 **로그인 없이 둘러보기** 탭
-2. 온보딩 없이 **피드**가 열리는지 확인
-3. 상세 단위 등은 기존 `UserProvider` 기본값(Metric)으로 동작
+Web은 OAuth **JavaScript origin** 등록이 필요합니다. 포트가 바뀔 때마다 `origin_mismatch` 가 납니다.
 
-**참고:** 레시피 Firestore 저장은 아직 없습니다. Auth 분기만 동작합니다.  
-이전 Mock용 `AuthEntryScreen`(Sign in/Sign up)은 더 이상 `home`이 아닙니다.
+1. **고정 포트로 실행** (코드 기본값 `7357`):
+
+```bash
+flutter run -d chrome --web-port=7357
+```
+
+2. [Google Cloud Console](https://console.cloud.google.com/) → 프로젝트 **jubu-9d725** → **APIs & Services** → **Credentials**
+3. OAuth 2.0 Client ID **Web client** (`…3mlsuhrdgkh1qof78nrllo0ti74pcajj…`) 선택
+4. **Authorized JavaScript origins** 에 추가:
+   - `http://localhost:7357`
+   - `http://127.0.0.1:7357`
+5. 저장 후 1~2분 기다렸다가 **Sign in** / **Sign up** 재시도
+6. Firebase Console → Authentication → **Settings** → **Authorized domains** 에 `localhost` 포함 확인
+
+**Error 400: origin_mismatch** 가 나오면: 브라우저 주소창의 `http://localhost:포트` 와 Console에 등록한 origin이 **완전히 같아야** 합니다 (포트 포함).
+
+#### 게스트(Proceed without it) 테스트
+
+1. **Proceed without it** 탭
+2. 온보딩 없이 **피드** 확인
+3. 상세 단위는 `UserProvider` 기본값(Metric)
+
+#### 설정(톱니바퀴) 테스트
+
+1. 피드 AppBar 오른쪽 **설정** 아이콘
+2. **Profile & units** → 단위/닉네임 변경 후 Save
+3. **Sign out** → 로그인 화면으로 복귀
+
+**참고:** 레시피 Firestore 저장은 아직 없습니다. Auth 분기만 동작합니다.
+
+**흰 화면만 보일 때 (Chrome)**  
+- 앱을 **완전히 다시 실행** (`flutter run -d chrome --web-port=7357`). Hot reload만으로는 `web/index.html` 변경이 반영되지 않을 수 있습니다.
 
 ---
 
@@ -94,15 +123,15 @@ flutter run -d android
 4. **Start JUBU** — `UserProvider` 저장 + `AuthService.completeOnboarding()` → 피드
 
 **피드에서 다시 바꾸기**
-- AppBar 오른쪽 **사람(프로필) 아이콘** → **Profile settings**
+- AppBar 오른쪽 **설정(톱니바퀴)** → **Profile & units**
 - 단위를 바꾼 뒤 **Save** → 피드로 돌아옴
 
 #### Metric ↔ Imperial 가 상세 재료에 바로 반영되는지 확인
 
-1. 온보딩(또는 피드 프로필)에서 **Metric** 선택 → **Start JUBU** / **Save**
+1. 온보딩(또는 설정 → Profile & units)에서 **Metric** 선택 → **Start JUBU** / **Save**
 2. Explore에서 **Spicy Braised Tofu** 등 카드 → 상세
 3. **Ingredients**에서 `400 g`, `120 ml`처럼 **g / ml** 가 보이는지 확인
-4. 뒤로 가 피드 → 프로필 아이콘 → **Imperial** 선택 → **Save**
+4. 뒤로 가 피드 → 설정 → Profile & units → **Imperial** 선택 → **Save**
 5. 같은 레시피 상세를 다시 열면 (이미 열려 있으면 뒤로 갔다가 다시 진입) 재료가 약 **`14.11 oz`**, **`0.5 cup`** 로 바뀌는지 확인  
    - 상세는 `context.watch<UserProvider>().currentUser.preferImperial` 를 읽고 `UnitConverter`로 변환합니다.
 6. `tbsp` / `tsp` 는 단위 설정과 관계없이 그대로여야 합니다.

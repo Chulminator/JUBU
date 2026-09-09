@@ -11,6 +11,45 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-09 14:55] [feedback]
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/auth/views/login_screen.dart`
+  - `lib/features/auth/services/auth_service.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Friends 카드 고정 높이(280) 제거 → bottom overflow 수정.
+  - 로그인: **Sign in** / **Sign up** / **Proceed without it** (Sign up만 온보딩).
+  - AppBar 톱니바퀴 설정 시트: Profile & units, Sign out.
+
+## [2026-09-09 12:20] [feedback]
+
+- **생성/수정된 파일**
+  - `lib/features/auth/views/login_screen.dart`
+  - `lib/features/auth/services/auth_service.dart`
+  - `lib/features/auth/views/onboarding_screen.dart`
+  - `lib/features/auth/providers/user_provider.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 로그인·온보딩 UI 영어화, 글로벌 타깃 카피로 변경 (한국/한인 특화 문구 제거).
+  - Web Google 로그인: `signInWithPopup` 사용, `origin_mismatch` 시 안내 메시지 + 고정 포트 `7357` 문서화.
+  - 기본 닉네임 `나` → `Chef`, 단위 카드 설명 중립화.
+
+## [2026-09-09 12:10] fix: white screen on web auth
+
+- **생성/수정된 파일**
+  - `lib/features/auth/services/auth_service.dart`
+  - `lib/features/auth/views/auth_gate.dart`
+  - `web/index.html`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Chrome/web에서 `GoogleSignIn` Client ID 미설정으로 AuthService 생성 시 크래시 → 흰 화면이던 문제 수정 (`clientId` + meta 태그, lazy 초기화).
+  - `AuthGate`가 `waiting`에 갇히지 않도록 로그인 화면으로 폴백.
+
 ## [2026-09-08 17:50] Step 10
 
 - **생성/수정된 파일**

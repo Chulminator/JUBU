@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 class UserProvider extends ChangeNotifier {
   UserModel _currentUser = UserModel(
     uid: 'current_user_me',
-    displayName: '나',
+    displayName: 'Chef',
     email: 'me@jubu.app',
     photoUrl: '',
     preferImperial: false,

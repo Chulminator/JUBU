@@ -19,16 +19,25 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: auth.authStateChanges,
       builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
+        if (snapshot.hasError) {
+          return Scaffold(
             backgroundColor: AppColors.background,
             body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Auth error:\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
           );
         }
 
-        final User? user = snapshot.data;
+        // Do not block on ConnectionState.waiting — authStateChanges may keep
+        // waiting on some platforms; treat null as logged out and show login.
+        final User? user = snapshot.data ?? auth.currentUser;
         if (user == null) {
           return const LoginScreen();
         }

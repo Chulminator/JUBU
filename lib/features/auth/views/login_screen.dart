@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../services/auth_service.dart';
 
-/// First entry: Google sign-in or guest browse (anonymous).
+/// First entry: Sign in, Sign up, or proceed as guest.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,7 +18,22 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _runAuth(Future<UserCredential?> Function() action) async {
+  String _friendlyAuthError(Object error) {
+    final String message = error.toString();
+    if (message.contains('origin_mismatch') ||
+        message.contains('redirect_uri_mismatch')) {
+      return 'Google sign-in blocked (origin not registered).\n'
+          'Use a fixed web port: flutter run -d chrome --web-port=${AuthService.webDevPort}\n'
+          'Then add http://localhost:${AuthService.webDevPort} to your OAuth '
+          'Web client in Google Cloud Console (see PROJECT_MANUAL).';
+    }
+    if (error is FirebaseAuthException) {
+      return error.message ?? error.code;
+    }
+    return message;
+  }
+
+  Future<void> _runAuth(Future<void> Function() action) async {
     if (_busy) {
       return;
     }
@@ -28,14 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       await action();
-      // AuthGate listens to authStateChanges and routes next screen.
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        setState(() => _error = e.message ?? e.code);
-      }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString());
+        setState(() => _error = _friendlyAuthError(e));
       }
     } finally {
       if (mounted) {
@@ -44,14 +54,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _onGoogle() async {
-    await _runAuth(() => context.read<AuthService>().signInWithGoogle());
+  Future<void> _onSignIn() async {
+    await _runAuth(() async {
+      await context.read<AuthService>().signInWithGoogle(
+            forceOnboarding: false,
+          );
+    });
   }
 
-  Future<void> _onGuest() async {
+  Future<void> _onSignUp() async {
+    await _runAuth(() async {
+      await context.read<AuthService>().signInWithGoogle(
+            forceOnboarding: true,
+          );
+    });
+  }
+
+  Future<void> _onProceedWithout() async {
     await _runAuth(() async {
       await context.read<AuthService>().signInAnonymously();
-      return null;
     });
   }
 
@@ -78,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                '미국 거주 한인들을 위한\n요리 다이어리 & 레시피',
+                'Your cook diary & recipe companion\nwherever you live.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textSecondary,
@@ -97,8 +118,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+              if (_busy)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                ),
               ElevatedButton(
-                onPressed: _busy ? null : _onGoogle,
+                onPressed: _busy ? null : _onSignIn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.onPrimary,
@@ -108,28 +136,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _busy
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: AppColors.onPrimary,
-                        ),
-                      )
-                    : const Text(
-                        'Google 계정으로 시작하기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                child: const Text(
+                  'Sign in',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _busy ? null : _onSignUp,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Sign up',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: _busy ? null : _onGuest,
+                onPressed: _busy ? null : _onProceedWithout,
                 child: Text(
-                  '로그인 없이 둘러보기',
+                  'Proceed without it',
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,

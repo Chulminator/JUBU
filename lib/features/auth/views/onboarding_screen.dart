@@ -68,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _save() {
     final name = _nickname.text.trim();
     context.read<UserProvider>().updatePreferences(
-          displayName: name.isEmpty ? '나' : name,
+          displayName: name.isEmpty ? 'Chef' : name,
           preferImperial: _preferImperial,
           preferredCuisines: _selectedCuisines.toList(),
         );
@@ -133,7 +133,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: _UnitCard(
                   selected: !_preferImperial,
                   title: 'Metric',
-                  subtitle: 'g, ml\n(Korea / global)',
+                  subtitle: 'g, ml\n(global standard)',
                   onTap: () => setState(() => _preferImperial = false),
                 ),
               ),
@@ -142,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: _UnitCard(
                   selected: _preferImperial,
                   title: 'Imperial',
-                  subtitle: 'oz, cup\n(US local)',
+                  subtitle: 'oz, cup\n(US-style)',
                   onTap: () => setState(() => _preferImperial = true),
                 ),
               ),
