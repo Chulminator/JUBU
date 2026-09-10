@@ -59,7 +59,7 @@ flutter run -d android
 
 **LoginScreen에서 확인할 것**
 - 중앙 **JUBU** 로고 텍스트
-- 소개: *Your cook diary & recipe companion wherever you live.*
+- 소개: *Your cook diary & recipe companion*
 - **Sign in** — Google → 피드 (온보딩 스킵)
 - **Sign up** — Google → 온보딩 → 피드
 - **Proceed without it** — 익명(게스트) → 피드
@@ -67,11 +67,27 @@ flutter run -d android
 #### Google 로그인 테스트 (Android — 권장)
 
 1. Firebase Console (`jubu-9d725`) → Authentication → **Google** 및 **Anonymous** 사용 설정
-2. Android: 디버그 **SHA-1**을 Firebase Android 앱에 등록 (`keytool` / `gradle signingReport`)
-3. `flutter run -d android`
+2. **필수: 디버그 SHA-1 등록** (이게 없으면 `sign_in_failed` / `ApiException: 10` / administrators 문구가 납니다)
+   - 이 PC의 debug SHA-1:
+     `72:51:49:91:4D:24:06:66:AC:E3:68:2B:04:57:3E:AB:C8:26:10:A3`
+   - Firebase Console → 톱니바퀴 **Project settings** → **Your apps** → Android (`com.example.jubu`)
+   - **Add fingerprint** → 위 SHA-1 붙여넣기 → 저장
+   - **Download google-services.json** → `android/app/google-services.json` 교체
+   - 앱 완전 종료 후 `flutter clean` → `flutter run -d emulator-5554`
+3. 확인: 새 `google-services.json`의 `oauth_client`에 `"client_type": 1` (Android) 항목이 생겨야 정상입니다. (지금 파일에는 Web `type: 3`만 있음)
 4. **Sign up** → 계정 선택 → 온보딩 → **Start JUBU** → 피드
 5. 설정 → **Sign out** → **Sign in** → 같은 계정이면 **온보딩 없이 피드**
 6. 계정 선택 취소 시 로그인 화면 유지 (크래시 없음)
+
+**"This operation is restricted to administrators only"**
+- 학교/회사(Google Workspace) 계정은 관리자가 외부 앱 로그인을 막아 둔 경우가 많습니다 → **개인 Gmail**로 시도
+- 위 SHA-1 / `google-services.json` 미등록이면 Play Services가 비슷하게 실패할 수 있음 → fingerprint 등록 후 json 재다운로드가 우선
+
+SHA-1을 다시 뽑는 명령 (Android Studio JBR 기준):
+
+```bash
+"C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
 
 #### Google 로그인 테스트 (Chrome / Web)
 

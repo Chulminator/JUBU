@@ -27,6 +27,17 @@ class _LoginScreenState extends State<LoginScreen> {
           'Then add http://localhost:${AuthService.webDevPort} to your OAuth '
           'Web client in Google Cloud Console (see PROJECT_MANUAL).';
     }
+    if (message.contains('sign_in_failed') ||
+        message.contains('ApiException: 10') ||
+        message.contains('DEVELOPER_ERROR') ||
+        message.contains('restricted to administrators')) {
+      return 'Google Sign-In failed on Android.\n'
+          '1) Firebase Console → Project settings → Your Android app\n'
+          '2) Add debug SHA-1 (see PROJECT_MANUAL)\n'
+          '3) Download a fresh google-services.json into android/app/\n'
+          '4) Or try a personal Gmail (not a school/work account).\n'
+          'Meanwhile continue as guest.';
+    }
     if (error is FirebaseAuthException) {
       return error.message ?? error.code;
     }
@@ -99,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Your cook diary & recipe companion\nwherever you live.',
+                'Your cook diary & recipe companion',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textSecondary,
@@ -161,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextButton(
                 onPressed: _busy ? null : _onProceedWithout,
                 child: Text(
-                  'Proceed without it',
+                  'Continue as guest',
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,

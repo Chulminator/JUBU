@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:190539958945:android:90b9e3e71deb71a13a7ee0",
+        "mobilesdk_app_id": "1:190539958945:android:e1b061663e2470123a7ee0",
         "android_client_info": {
-          "package_name": "com.example.jubu"
+          "package_name": "com.chulminator.jubu"
         }
       },
       "oauth_client": [

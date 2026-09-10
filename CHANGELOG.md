@@ -11,6 +11,29 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-10 16:25] Firebase Android package sync
+
+- **생성/수정된 파일**
+  - `android/settings.gradle.kts` (google-services 4.5.0)
+  - `android/build.gradle.kts` (중복 plugins 제거)
+  - `lib/firebase_options.dart` (새 Android appId)
+  - `android/app/src/main/kotlin/com/chulminator/jubu/MainActivity.kt`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Google services 플러그인은 원래 app 모듈에 이미 적용됨. Flutter에서는 Firebase BoM을 app/build.gradle에 넣지 않음 (pubspec FlutterFire가 담당).
+  - `com.chulminator.jubu` 패키지와 `firebase_options` / MainActivity 정렬.
+  - Google Sign-In은 여전히 SHA-1 등록 후 `client_type: 1`이 json에 생겨야 함.
+
+## [2026-09-10 10:55] [docs] Android Google Sign-In SHA-1
+
+- **생성/수정된 파일**
+  - `lib/features/auth/views/login_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Android `sign_in_failed` / administrators 오류 안내 메시지 추가.
+  - 매뉴얼에 이 PC debug SHA-1 및 `google-services.json`에 Android OAuth(`client_type: 1`) 필요 조건 명시.
+
 ## [2026-09-09 14:55] [feedback]
 
 - **생성/수정된 파일**
