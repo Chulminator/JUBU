@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "190539958945-qbgi7mv7hfqvh4oir47u9fo0m04ngkog.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chulminator.jubu",
+            "certificate_hash": "725149914d240666ace3682b04573eabc82610a3"
+          }
+        },
+        {
           "client_id": "190539958945-3mlsuhrdgkh1qof78nrllo0ti74pcajj.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -31,10 +39,10 @@
               "client_type": 3
             },
             {
-              "client_id": "190539958945-dd26h23vgnh1nkarj0l6ttp0i632n542.apps.googleusercontent.com",
+              "client_id": "190539958945-6k657jdvan2bc96mk6ih9bma5j0l81a5.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.jubu"
+                "bundle_id": "com.chulminator.jubu"
               }
             }
           ]

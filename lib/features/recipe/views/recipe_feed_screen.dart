@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../auth/providers/user_provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/views/onboarding_screen.dart';
 import '../models/recipe_model.dart';
@@ -12,7 +15,7 @@ import '../services/mock_recipe_service.dart';
 import 'create_recipe_screen.dart';
 import 'recipe_detail_screen.dart';
 
-/// Triple-tab home: Explore / Friends / My Log + FAB.
+/// Bottom-nav home: Friends / Explore / Messages / My Log + FAB.
 class RecipeFeedScreen extends StatefulWidget {
   const RecipeFeedScreen({super.key});
 
@@ -21,6 +24,8 @@ class RecipeFeedScreen extends StatefulWidget {
 }
 
 class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   Future<void> _openCreateRecipe() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -32,82 +37,32 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
     }
   }
 
-  Future<void> _openSettingsMenu() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (BuildContext sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.tune),
-                title: const Text('Profile & units'),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          const OnboardingScreen(fromSettings: true),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: AppColors.error),
-                title: Text(
-                  'Sign out',
-                  style: AppTextStyles.body.copyWith(color: AppColors.error),
-                ),
-                onTap: () async {
-                  Navigator.of(sheetContext).pop();
-                  await context.read<AuthService>().signOut();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final recipes = MockRecipeService.getRecipes();
     final myRecipes = MockRecipeService.getMyRecipes();
     final pending = MockRecipeService.getPendingRatings();
+    final photoUrl =
+        context.watch<UserProvider>().currentUser.photoUrl.trim();
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: AppColors.background,
+        endDrawer: const _SettingsEndDrawer(),
         appBar: AppBar(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
+          centerTitle: true,
+          // Balance the two action icons so "JUBU" sits visually centered.
+          leadingWidth: 96,
+          leading: const SizedBox.shrink(),
           title: Text(
             'JUBU',
             style: AppTextStyles.title.copyWith(color: AppColors.onPrimary),
           ),
           actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {},
-              tooltip: 'Search',
-            ),
             IconButton(
               icon: const Icon(Icons.notifications_outlined),
               onPressed: () {},
@@ -116,24 +71,15 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               tooltip: 'Settings',
-              onPressed: _openSettingsMenu,
+              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
             ),
           ],
-          bottom: TabBar(
-            labelColor: AppColors.onPrimary,
-            unselectedLabelColor: const Color(0xCCFFFFFF),
-            indicatorColor: AppColors.onPrimary,
-            tabs: const <Widget>[
-              Tab(text: 'Explore'),
-              Tab(text: 'Friends'),
-              Tab(text: 'My Log'),
-            ],
-          ),
         ),
         body: TabBarView(
           children: <Widget>[
-            _RecipeOnlyMetaGrid(recipes: recipes),
             _RecipeOnlyMetaList(recipes: recipes),
+            _RecipeOnlyMetaGrid(recipes: recipes),
+            const _MessagesPlaceholder(),
             _MyLogView(
               recipes: myRecipes,
               pending: pending,
@@ -141,12 +87,233 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: Material(
+          color: AppColors.cardBackground,
+          elevation: 8,
+          child: SafeArea(
+            child: TabBar(
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.primary,
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: <Widget>[
+                const Tab(icon: Icon(Icons.home_outlined)),
+                const Tab(icon: Icon(Icons.search)),
+                const Tab(icon: Icon(Icons.chat_bubble_outline)),
+                Tab(icon: _ProfileAvatar(photoUrl: photoUrl, radius: 12)),
+              ],
+            ),
+          ),
+        ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openCreateRecipe,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
           tooltip: 'New recipe',
           child: const Icon(Icons.add),
+        ),
+      ),
+    );
+  }
+}
+
+/// Settings panel that slides in from the right.
+class _SettingsEndDrawer extends StatelessWidget {
+  const _SettingsEndDrawer();
+
+  Future<void> _pickProfilePhoto(BuildContext context) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      imageQuality: 85,
+    );
+    if (file == null || !context.mounted) {
+      return;
+    }
+    context.read<UserProvider>().updatePreferences(photoUrl: file.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserProvider>().currentUser;
+
+    return Drawer(
+      backgroundColor: AppColors.cardBackground,
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text('Settings', style: AppTextStyles.subtitle),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: _ProfileAvatar(photoUrl: user.photoUrl, radius: 22),
+              title: const Text('Profile photo'),
+              subtitle: Text(
+                user.photoUrl.trim().isEmpty
+                    ? 'Add a photo from your gallery'
+                    : 'Tap to change',
+                style: AppTextStyles.bodySmall,
+              ),
+              onTap: () => _pickProfilePhoto(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.tune),
+              title: const Text('Profile & units'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        const OnboardingScreen(fromSettings: true),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.error),
+              title: Text(
+                'Sign out',
+                style: AppTextStyles.body.copyWith(color: AppColors.error),
+              ),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await context.read<AuthService>().signOut();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Circular profile avatar (network or local file path).
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.photoUrl, this.radius = 12});
+
+  final String photoUrl;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final String url = photoUrl.trim();
+    ImageProvider<Object>? image;
+    if (url.isNotEmpty) {
+      if (url.startsWith('http')) {
+        image = NetworkImage(url);
+      } else {
+        final File file = File(url);
+        if (file.existsSync()) {
+          image = FileImage(file);
+        }
+      }
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.surfaceMuted,
+      foregroundImage: image,
+      child: image == null
+          ? Icon(
+              Icons.person,
+              size: radius,
+              color: AppColors.textSecondary,
+            )
+          : null,
+    );
+  }
+}
+
+/// Spinning restaurant (fork & knife) mark for pull / load-more.
+class _ForkKnifeLoader extends StatefulWidget {
+  const _ForkKnifeLoader({this.active = true});
+
+  final bool active;
+
+  @override
+  State<_ForkKnifeLoader> createState() => _ForkKnifeLoaderState();
+}
+
+class _ForkKnifeLoaderState extends State<_ForkKnifeLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    if (widget.active) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ForkKnifeLoader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!widget.active && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: RotationTransition(
+          turns: _controller,
+          child: const Icon(
+            Icons.restaurant,
+            size: 32,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Placeholder until messaging is implemented.
+class _MessagesPlaceholder extends StatelessWidget {
+  const _MessagesPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 48,
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 12),
+            Text('Messages', style: AppTextStyles.subtitle),
+            const SizedBox(height: 6),
+            Text(
+              'Coming soon — chat with cooks you follow.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall,
+            ),
+          ],
         ),
       ),
     );
@@ -289,45 +456,223 @@ class _RecipeMetaCard extends StatelessWidget {
   }
 }
 
-class _RecipeOnlyMetaGrid extends StatelessWidget {
-  const _RecipeOnlyMetaGrid({required this.recipes});
-
-  final List<RecipeModel> recipes;
+/// Shared pull-to-refresh + bottom load-more with fork/knife spinner.
+mixin _UtensilScrollLoading<T extends StatefulWidget> on State<T> {
+  final ScrollController utensilScrollController = ScrollController();
+  bool utensilLoadingMore = false;
 
   @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.62,
-      ),
-      itemCount: recipes.length,
-      itemBuilder: (BuildContext context, int index) {
-        return _RecipeMetaCard(recipe: recipes[index]);
+  void initState() {
+    super.initState();
+    utensilScrollController.addListener(_onUtensilScroll);
+  }
+
+  @override
+  void dispose() {
+    utensilScrollController.removeListener(_onUtensilScroll);
+    utensilScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onUtensilScroll() {
+    if (!utensilScrollController.hasClients || utensilLoadingMore) {
+      return;
+    }
+    final position = utensilScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 120) {
+      _runLoadMore();
+    }
+  }
+
+  Future<void> _runLoadMore() async {
+    setState(() => utensilLoadingMore = true);
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (mounted) {
+      setState(() => utensilLoadingMore = false);
+    }
+  }
+
+  Future<void> utensilRefresh() async {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+  }
+
+  Widget utensilRefreshControl() {
+    return CupertinoSliverRefreshControl(
+      onRefresh: utensilRefresh,
+      builder: (
+        BuildContext context,
+        RefreshIndicatorMode refreshState,
+        double pulledExtent,
+        double refreshTriggerPullDistance,
+        double refreshIndicatorExtent,
+      ) {
+        final bool spin = refreshState == RefreshIndicatorMode.refresh ||
+            refreshState == RefreshIndicatorMode.armed ||
+            refreshState == RefreshIndicatorMode.done;
+        return _ForkKnifeLoader(active: spin);
       },
     );
   }
 }
 
-class _RecipeOnlyMetaList extends StatelessWidget {
+class _RecipeOnlyMetaGrid extends StatefulWidget {
+  const _RecipeOnlyMetaGrid({required this.recipes});
+
+  final List<RecipeModel> recipes;
+
+  @override
+  State<_RecipeOnlyMetaGrid> createState() => _RecipeOnlyMetaGridState();
+}
+
+class _RecipeOnlyMetaGridState extends State<_RecipeOnlyMetaGrid>
+    with _UtensilScrollLoading<_RecipeOnlyMetaGrid> {
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<RecipeModel> get _filtered {
+    final String q = _query.trim().toLowerCase();
+    if (q.isEmpty) {
+      return widget.recipes;
+    }
+    return widget.recipes.where((RecipeModel r) {
+      final String tags = r.recommendationTags.join(' ').toLowerCase();
+      return r.title.toLowerCase().contains(q) ||
+          r.authorName.toLowerCase().contains(q) ||
+          r.category.toLowerCase().contains(q) ||
+          tags.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<RecipeModel> recipes = _filtered;
+
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: TextField(
+            controller: _search,
+            style: AppTextStyles.body,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search recipes, cooks, tags…',
+              hintStyle: AppTextStyles.bodySmall,
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _search.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+              filled: true,
+              fillColor: AppColors.cardBackground,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (String value) => setState(() => _query = value),
+          ),
+        ),
+        Expanded(
+          child: CustomScrollView(
+            controller: utensilScrollController,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: <Widget>[
+              utensilRefreshControl(),
+              if (recipes.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text(
+                      'No recipes match “$_query”.',
+                      style: AppTextStyles.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(12),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.62,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (BuildContext context, int index) {
+                        return _RecipeMetaCard(recipe: recipes[index]);
+                      },
+                      childCount: recipes.length,
+                    ),
+                  ),
+                ),
+              if (utensilLoadingMore)
+                const SliverToBoxAdapter(child: _ForkKnifeLoader()),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecipeOnlyMetaList extends StatefulWidget {
   const _RecipeOnlyMetaList({required this.recipes});
 
   final List<RecipeModel> recipes;
 
   @override
+  State<_RecipeOnlyMetaList> createState() => _RecipeOnlyMetaListState();
+}
+
+class _RecipeOnlyMetaListState extends State<_RecipeOnlyMetaList>
+    with _UtensilScrollLoading<_RecipeOnlyMetaList> {
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: recipes.length,
-      itemBuilder: (BuildContext context, int index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _RecipeMetaCard(recipe: recipes[index], wide: true),
-        );
-      },
+    return CustomScrollView(
+      controller: utensilScrollController,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: <Widget>[
+        utensilRefreshControl(),
+        SliverPadding(
+          padding: const EdgeInsets.all(12),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (BuildContext context, int index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _RecipeMetaCard(
+                    recipe: widget.recipes[index],
+                    wide: true,
+                  ),
+                );
+              },
+              childCount: widget.recipes.length,
+            ),
+          ),
+        ),
+        if (utensilLoadingMore)
+          const SliverToBoxAdapter(child: _ForkKnifeLoader()),
+      ],
     );
   }
 }

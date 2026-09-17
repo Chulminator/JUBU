@@ -18,7 +18,7 @@
 - **Sign up** → 온보딩(닉네임·단위·식단) → 피드
 - **Sign in** / 게스트 → 바로 피드
 - AppBar **설정(톱니바퀴)** → Profile & units / Sign out
-- Explore / Friends / My Log 피드에서 레시피 카드 보기
+- Explore / Friends / Messages / My Log 하단 아이콘 탭에서 레시피·메시지 보기
 - 카드 눌러 상세 보기 (세로 스크롤)
 - **전역 단위 설정**(Metric ↔ Imperial)에 따라 상세 재료 단위 자동 변환
 - **Start cooking mode** 로 단계별 요리 모드 + 타이머
@@ -41,7 +41,7 @@ flutter run -d android
 
 기기가 안 보이면 `flutter devices` 로 확인하세요.
 
-성공 기준: **LoginScreen**(Sign in / Sign up / Proceed without it) → (Sign up이면 온보딩) → 주황 AppBar **JUBU** + 설정 톱니바퀴, 탭 **Explore | Friends | My Log**, **+** 버튼.
+성공 기준: **LoginScreen**(Sign in / Sign up / Proceed without it) → (Sign up이면 온보딩) → 주황 AppBar **JUBU** + 설정 톱니바퀴, **하단** 아이콘 탭(돋보기·집·종이비행기·프로필), **+** 버튼.
 
 ---
 
@@ -70,7 +70,7 @@ flutter run -d android
 2. **필수: 디버그 SHA-1 등록** (이게 없으면 `sign_in_failed` / `ApiException: 10` / administrators 문구가 납니다)
    - 이 PC의 debug SHA-1:
      `72:51:49:91:4D:24:06:66:AC:E3:68:2B:04:57:3E:AB:C8:26:10:A3`
-   - Firebase Console → 톱니바퀴 **Project settings** → **Your apps** → Android (`com.example.jubu`)
+   - Firebase Console → 톱니바퀴 **Project settings** → **Your apps** → Android (`com.chulminator.jubu`)
    - **Add fingerprint** → 위 SHA-1 붙여넣기 → 저장
    - **Download google-services.json** → `android/app/google-services.json` 교체
    - 앱 완전 종료 후 `flutter clean` → `flutter run -d emulator-5554`
@@ -117,9 +117,10 @@ flutter run -d chrome --web-port=7357
 
 #### 설정(톱니바퀴) 테스트
 
-1. 피드 AppBar 오른쪽 **설정** 아이콘
-2. **Profile & units** → 단위/닉네임 변경 후 Save
-3. **Sign out** → 로그인 화면으로 복귀
+1. 피드 AppBar 오른쪽 **설정** 아이콘 → **오른쪽**에서 패널이 열림
+2. **Profile photo** → 갤러리 선택 → 하단 My Log 아바타 변경 확인
+3. **Profile & units** → 단위/닉네임 변경 후 Save
+4. **Sign out** → 로그인 화면으로 복귀
 
 **참고:** 레시피 Firestore 저장은 아직 없습니다. Auth 분기만 동작합니다.
 
@@ -158,13 +159,19 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 
 ### 3.1 피드 (`RecipeFeedScreen`)
 
-탭 3개 + FAB(+) 입니다.
+**하단** 아이콘 탭 4개 + FAB(+) 입니다. (상단 AppBar에는 탭 없음)
 
-| 탭 | 무엇을 보나요? |
-|----|----------------|
-| **Explore** | 전체 Mock 레시피 **2열 그리드** |
-| **Friends** | 같은 데이터를 **넓은 카드 리스트** |
-| **My Log** | `authorId == current_user_me` 인 **내 기록만** + (있으면) **Awaiting your rating** |
+| 아이콘 | 탭 | 무엇을 보나요? |
+|--------|----|----------------|
+| 집 | Friends | 넓은 카드 리스트. **당겨서 새로고침** / 아래 스크롤 시 **포크·나이프** 로딩 |
+| 돋보기 | Explore | 상단 **검색창** + 2열 그리드. 포크·나이프 로딩 |
+| 말풍선 | Messages | 플레이스홀더 (*Coming soon*) |
+| 원형 프로필 | My Log | 내 기록 + (있으면) **Awaiting your rating** |
+
+**설정 (톱니바퀴)**  
+- 오른쪽에서 `endDrawer` 슬라이드  
+- **Profile photo** — 갤러리에서 사진 선택 (하단 My Log 아바타에 반영)  
+- **Profile & units** / **Sign out**
 
 **카드에 보이는 것**
 1. 사진  
@@ -256,7 +263,7 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 ## 4. 구현 체크리스트 (현재)
 
 - [x] 앱 실행 / JUBU AppBar
-- [x] Explore / Friends / My Log 피드 + FAB(+)
+- [x] 하단 아이콘 탭 Explore / Friends / Messages / My Log + FAB(+)
 - [x] 피드 카드: 사진·제목·별점·태그·작성자·칭호
 - [x] 상세 세로 스크롤 + 단위 변환 테스트 아이콘
 - [x] 요리 노트 카드 (별점·태그·메모)

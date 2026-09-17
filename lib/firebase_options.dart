@@ -63,8 +63,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '190539958945',
     projectId: 'jubu-9d725',
     storageBucket: 'jubu-9d725.firebasestorage.app',
-    iosClientId: '190539958945-dd26h23vgnh1nkarj0l6ttp0i632n542.apps.googleusercontent.com',
-    iosBundleId: 'com.example.jubu',
+    iosClientId:
+        '190539958945-6k657jdvan2bc96mk6ih9bma5j0l81a5.apps.googleusercontent.com',
+    iosBundleId: 'com.chulminator.jubu',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
@@ -82,7 +83,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '190539958945',
     projectId: 'jubu-9d725',
     storageBucket: 'jubu-9d725.firebasestorage.app',
-    iosClientId: '190539958945-dd26h23vgnh1nkarj0l6ttp0i632n542.apps.googleusercontent.com',
-    iosBundleId: 'com.example.jubu',
+    iosClientId:
+        '190539958945-6k657jdvan2bc96mk6ih9bma5j0l81a5.apps.googleusercontent.com',
+    iosBundleId: 'com.chulminator.jubu',
   );
 }

@@ -19,11 +19,13 @@ class UserProvider extends ChangeNotifier {
     bool? preferImperial,
     List<String>? preferredCuisines,
     String? displayName,
+    String? photoUrl,
   }) {
     _currentUser = _currentUser.copyWith(
       preferImperial: preferImperial,
       preferredCuisines: preferredCuisines,
       displayName: displayName,
+      photoUrl: photoUrl,
     );
     notifyListeners();
   }

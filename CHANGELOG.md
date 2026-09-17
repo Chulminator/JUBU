@@ -11,6 +11,58 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-17 13:40] [feedback] Explore search field
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Explore(돋보기) 탭 상단에 검색창 추가. 제목·작성자·카테고리·태그 필터.
+
+## [2026-09-15 12:55] [feedback] Settings drawer, chat icon, utensil loading
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/auth/providers/user_provider.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 설정: 하단 시트 → **오른쪽 endDrawer**. Profile photo / Profile & units / Sign out.
+  - Messages 아이콘: 종이비행기 → **말풍선**.
+  - Friends·Explore: 당겨서 새로고침 + 하단 로드 시 **포크·나이프(`Icons.restaurant`)** 스피너.
+
+## [2026-09-15 12:45] [feedback] Home tab left + centered title
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 하단 탭 순서: Friends(집) → Explore → Messages → My Log.
+  - AppBar `JUBU` 가운데 정렬 (`centerTitle` + leading spacer).
+
+## [2026-09-15 12:40] [feedback] Bottom icon tabs + Messages
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - TabBar를 AppBar 아래에서 **하단**으로 이동.
+  - Messages 탭 추가 (플레이스홀더).
+  - 탭 라벨 → 아이콘: Explore=돋보기, Friends=집, Messages=종이비행기, My Log=원형 프로필.
+
+## [2026-09-15 11:20] Sync firebase_options to new google-services.json
+
+- **생성/수정된 파일**
+  - `lib/firebase_options.dart`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 새 `google-services.json` 기준으로 iOS/macOS `iosClientId`·`iosBundleId`(`com.chulminator.jubu`) 동기화.
+  - Android `appId`/`package`는 이미 일치. Web client ID(`…3mlsuhr…`)는 유지.
+  - 참고: json에 아직 Android OAuth(`client_type: 1`) 없음 → SHA-1 등록 후 재다운로드 필요.
+
 ## [2026-09-10 16:25] Firebase Android package sync
 
 - **생성/수정된 파일**
