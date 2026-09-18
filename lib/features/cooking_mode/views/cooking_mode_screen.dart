@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../recipe/models/recipe_model.dart';
 import '../../recipe/services/mock_recipe_service.dart';
+import '../../recipe/views/rate_recipe_screen.dart';
 
 /// Hands-free cooking mode: large type, swipeable steps, per-step timer.
 class CookingModeScreen extends StatefulWidget {
@@ -113,27 +114,14 @@ class _CookingModeScreenState extends State<CookingModeScreen> {
 
   Future<void> _onComplete() async {
     MockRecipeService.addPendingRating(widget.recipe.id);
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Cooking complete!'),
-          content: Text(
-            '${widget.recipe.title}\nNice work. Rate it later in My Log.',
-            style: AppTextStyles.body,
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-    if (mounted) {
-      Navigator.of(context).pop();
+    if (!mounted) {
+      return;
     }
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => RateRecipeScreen(recipe: widget.recipe),
+      ),
+    );
   }
 
   String _formatCountdown(int totalSeconds) {

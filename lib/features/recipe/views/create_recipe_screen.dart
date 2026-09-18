@@ -3,13 +3,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../auth/providers/user_provider.dart';
 import '../models/recipe_model.dart';
 import '../services/mock_recipe_service.dart';
 
-/// Form to log a new recipe / cook diary entry into in-memory mock storage.
+/// Create form ordered to match [RecipeDetailScreen] fields.
 class CreateRecipeScreen extends StatefulWidget {
   const CreateRecipeScreen({super.key});
 
@@ -25,13 +27,9 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
   final TextEditingController _description = TextEditingController();
   final TextEditingController _category = TextEditingController();
   final TextEditingController _cookTime = TextEditingController();
-  final TextEditingController _recommendationTags =
-      TextEditingController(text: 'microwave only!');
-  final TextEditingController _cookNote = TextEditingController();
+  final TextEditingController _hashtags = TextEditingController(text: '#');
 
   String? _coverImagePath;
-  double _satisfactionScore = 5.0;
-  bool _showCookDiary = false;
 
   final List<_IngredientDraft> _ingredients = <_IngredientDraft>[
     _IngredientDraft(),
@@ -47,8 +45,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
     _description.dispose();
     _category.dispose();
     _cookTime.dispose();
-    _recommendationTags.dispose();
-    _cookNote.dispose();
+    _hashtags.dispose();
     for (final row in _ingredients) {
       row.dispose();
     }
@@ -56,6 +53,40 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       row.dispose();
     }
     super.dispose();
+  }
+
+  /// Ensures each spaced token starts with `#` (space starts the next tag).
+  String _formatHashtagInput(String raw) {
+    if (raw.isEmpty) {
+      return '#';
+    }
+    final bool endsWithSpace = raw.endsWith(' ');
+    final List<String> parts = raw
+        .trimRight()
+        .split(RegExp(r'\s+'))
+        .where((String p) => p.isNotEmpty)
+        .map((String p) {
+          final String clean =
+              p.replaceFirst(RegExp(r'^#+'), '').replaceAll('#', '');
+          return clean.isEmpty ? '#' : '#$clean';
+        })
+        .toList();
+    if (parts.isEmpty) {
+      return endsWithSpace ? '# #' : '#';
+    }
+    final String joined = parts.join(' ');
+    return endsWithSpace ? '$joined #' : joined;
+  }
+
+  void _onHashtagsChanged(String value) {
+    final String formatted = _formatHashtagInput(value);
+    if (formatted == value) {
+      return;
+    }
+    _hashtags.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 
   InputDecoration _field(String label, {String? hint}) {
@@ -127,28 +158,30 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       return;
     }
 
-    final note = _cookNote.text.trim();
-    final tags = _recommendationTags.text
-        .split(',')
-        .map((String s) => s.trim())
+    final tags = _hashtags.text
+        .split(RegExp(r'\s+'))
+        .map((String s) => s.trim().replaceFirst(RegExp(r'^#+'), ''))
+        .map((String s) => s.replaceAll(RegExp(r'\s+'), ''))
         .where((String s) => s.isNotEmpty)
         .toList();
+
+    final user = context.read<UserProvider>().currentUser;
 
     final recipe = RecipeModel(
       id: 'user-${DateTime.now().millisecondsSinceEpoch}',
       title: _title.text.trim(),
       description: _description.text.trim(),
       authorId: MockRecipeService.currentUserId,
-      authorName: 'Me',
+      username: user.username,
+      authorTitle: user.equippedTitle,
       imageUrl: _coverImagePath ?? _fallbackImage,
-      category: _category.text.trim().isEmpty ? 'Korean' : _category.text.trim(),
+      category:
+          _category.text.trim().isEmpty ? 'Korean' : _category.text.trim(),
       cookingTimeMinutes: int.tryParse(_cookTime.text.trim()) ?? 0,
       ingredients: ingredients,
       steps: steps,
-      satisfactionScore: _satisfactionScore,
-      recommendationTags:
-          tags.isEmpty ? const <String>['microwave only!'] : tags,
-      cookNote: note.isEmpty ? null : note,
+      satisfactionScore: 5.0,
+      hashtags: tags,
       createdAt: DateTime.now(),
     );
 
@@ -163,65 +196,24 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text('New recipe / cook log'),
+        title: const Text('New recipe'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: <Widget>[
-            Text('Basics', style: AppTextStyles.subtitle),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _title,
-              style: AppTextStyles.body,
-              decoration: _field('Title'),
-              validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _description,
-              style: AppTextStyles.body,
-              maxLines: 3,
-              decoration: _field('Description'),
-              validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter a description' : null,
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _category,
-              style: AppTextStyles.body,
-              decoration: _field(
-                'Category',
-                hint: 'e.g. Korean, Vegan, Quick Meal',
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _cookTime,
-              style: AppTextStyles.body,
-              keyboardType: TextInputType.number,
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              decoration: _field('Cook time (minutes)'),
-              validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter cook time' : null,
-            ),
-            const SizedBox(height: 12),
-            Text('Cover photo', style: AppTextStyles.bodySmall),
-            const SizedBox(height: 6),
+            Text('Cover photo', style: AppTextStyles.subtitle),
+            const SizedBox(height: 8),
             InkWell(
               onTap: _pickCoverImage,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                height: 140,
+                height: 200,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.surfaceMuted),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: _coverImagePath == null
@@ -229,11 +221,16 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Icon(Icons.photo_library_outlined,
-                                color: AppColors.textSecondary),
-                            SizedBox(height: 6),
-                            Text('Pick from gallery',
-                                style: AppTextStyles.bodySmall),
+                            Icon(
+                              Icons.photo_library_outlined,
+                              color: AppColors.textSecondary,
+                              size: 36,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Pick from gallery',
+                              style: AppTextStyles.bodySmall,
+                            ),
                           ],
                         ),
                       )
@@ -245,6 +242,66 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            TextFormField(
+              controller: _title,
+              style: AppTextStyles.body,
+              decoration: _field('Title'),
+              validator: (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextFormField(
+                    controller: _cookTime,
+                    style: AppTextStyles.body,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: _field('Cook time (min)'),
+                    validator: (String? v) => (v == null || v.trim().isEmpty)
+                        ? 'Required'
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextFormField(
+                    controller: _category,
+                    style: AppTextStyles.body,
+                    decoration: _field(
+                      'Category',
+                      hint: 'Korean, Fusion…',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _description,
+              style: AppTextStyles.body,
+              maxLines: 4,
+              decoration: _field(
+                'Description',
+                hint: 'What is this cook about?',
+              ),
+              validator: (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter a description' : null,
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _hashtags,
+              style: AppTextStyles.body,
+              onChanged: _onHashtagsChanged,
+              decoration: _field(
+                'Hashtags',
+                hint: 'Type and space — # starts each tag',
+              ),
+            ),
+            const SizedBox(height: 20),
             Row(
               children: <Widget>[
                 Text('Ingredients', style: AppTextStyles.subtitle),
@@ -255,7 +312,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   },
                   icon: const Icon(Icons.add, color: AppColors.primary),
                   label: Text(
-                    'Add ingredient',
+                    'Add',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -290,7 +347,7 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                   },
                   icon: const Icon(Icons.add, color: AppColors.primary),
                   label: Text(
-                    'Add step',
+                    'Add',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -315,54 +372,6 @@ class _CreateRecipeScreenState extends State<CreateRecipeScreen> {
                 },
               );
             }),
-            const SizedBox(height: 8),
-            ExpansionTile(
-              initiallyExpanded: _showCookDiary,
-              onExpansionChanged: (bool open) {
-                setState(() => _showCookDiary = open);
-              },
-              tilePadding: EdgeInsets.zero,
-              title: Text(
-                'Cook diary (optional)',
-                style: AppTextStyles.subtitle,
-              ),
-              children: <Widget>[
-                Text(
-                  'Satisfaction ${_satisfactionScore.toStringAsFixed(1)} / 5.0',
-                  style: AppTextStyles.body,
-                ),
-                Slider(
-                  value: _satisfactionScore,
-                  min: 0,
-                  max: 5,
-                  divisions: 10,
-                  activeColor: AppColors.swapHighlight,
-                  label: _satisfactionScore.toStringAsFixed(1),
-                  onChanged: (double v) {
-                    setState(() => _satisfactionScore = v);
-                  },
-                ),
-                TextFormField(
-                  controller: _recommendationTags,
-                  style: AppTextStyles.body,
-                  decoration: _field(
-                    'Tags (comma-separated, multiple OK)',
-                    hint: 'microwave only!, Must try!, Quick',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _cookNote,
-                  style: AppTextStyles.body,
-                  maxLines: 3,
-                  decoration: _field(
-                    'Cook note (optional)',
-                    hint: 'Use half a spoon less soy next time',
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

@@ -2,18 +2,20 @@
 class UserModel {
   UserModel({
     required this.uid,
-    required this.displayName,
+    required this.username,
     required this.email,
     required this.photoUrl,
     this.preferImperial = false,
     this.preferredCuisines = const <String>['Korean'],
     this.equippedTitle,
-    this.unlockedTitles = const <String>[],
+    this.titleBadges = const <String>[],
     this.followingUids = const <String>[],
   });
 
   final String uid;
-  final String displayName;
+
+  /// Public handle shown on posts.
+  final String username;
   final String email;
   final String photoUrl;
 
@@ -21,30 +23,38 @@ class UserModel {
   final bool preferImperial;
 
   final List<String> preferredCuisines;
+
+  /// Currently equipped title badge shown on posts.
   final String? equippedTitle;
-  final List<String> unlockedTitles;
+
+  /// Unlocked title badges the user can equip.
+  final List<String> titleBadges;
+
   final List<String> followingUids;
 
   UserModel copyWith({
     String? uid,
-    String? displayName,
+    String? username,
     String? email,
     String? photoUrl,
     bool? preferImperial,
     List<String>? preferredCuisines,
     String? equippedTitle,
-    List<String>? unlockedTitles,
+    bool clearEquippedTitle = false,
+    List<String>? titleBadges,
     List<String>? followingUids,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
-      displayName: displayName ?? this.displayName,
+      username: username ?? this.username,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
       preferImperial: preferImperial ?? this.preferImperial,
       preferredCuisines: preferredCuisines ?? this.preferredCuisines,
-      equippedTitle: equippedTitle ?? this.equippedTitle,
-      unlockedTitles: unlockedTitles ?? this.unlockedTitles,
+      equippedTitle: clearEquippedTitle
+          ? null
+          : (equippedTitle ?? this.equippedTitle),
+      titleBadges: titleBadges ?? this.titleBadges,
       followingUids: followingUids ?? this.followingUids,
     );
   }

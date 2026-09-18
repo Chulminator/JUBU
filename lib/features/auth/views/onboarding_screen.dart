@@ -51,7 +51,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     _prefsLoaded = true;
     final user = context.read<UserProvider>().currentUser;
-    _nickname.text = user.displayName;
+    _nickname.text = user.username;
     _preferImperial = user.preferImperial;
     _selectedCuisines = user.preferredCuisines.toSet();
     if (_selectedCuisines.isEmpty) {
@@ -68,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _save() {
     final name = _nickname.text.trim();
     context.read<UserProvider>().updatePreferences(
-          displayName: name.isEmpty ? 'Chef' : name,
+          username: name.isEmpty ? 'Chef' : name,
           preferImperial: _preferImperial,
           preferredCuisines: _selectedCuisines.toList(),
         );
@@ -105,13 +105,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: <Widget>[
-          Text('Nickname', style: AppTextStyles.subtitle),
+          Text('Username', style: AppTextStyles.subtitle),
           const SizedBox(height: 8),
           TextField(
             controller: _nickname,
             style: AppTextStyles.body,
             decoration: InputDecoration(
-              hintText: 'Your display name',
+              hintText: 'Your username',
               filled: true,
               fillColor: AppColors.cardBackground,
               border: OutlineInputBorder(

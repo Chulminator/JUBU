@@ -11,6 +11,106 @@ JUBU 작업 이력입니다. **최신 항목이 위에** 오도록 적습니다.
 
 ---
 
+## [2026-09-18 15:10] [feedback] Rate after Done cooking + 0-star skip
+
+- **생성/수정된 파일**
+  - `lib/features/cooking_mode/views/cooking_mode_screen.dart`
+  - `lib/features/recipe/views/rate_recipe_screen.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - **Done cooking** → 바로 Rate this cook (상세 스크롤 프롬프트 제거).
+  - Rate 기본 별점 0. 0점+빈 코멘트 Submit 시 awaiting 큐에 유지.
+
+## [2026-09-18 14:30] [feedback] Unlock / debug hub / My Log grid / pending ratings
+
+- **생성/수정된 파일**
+  - `lib/features/auth/views/title_badge_unlock_screen.dart`
+  - `lib/features/debug/views/debug_hub_screen.dart`
+  - `lib/features/recipe/views/pending_ratings_screen.dart`
+  - `lib/features/recipe/views/rate_recipe_screen.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/services/mock_recipe_service.dart`
+  - `lib/features/auth/providers/user_provider.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Title badge 해금 축하 화면 (`TitleBadgeUnlockScreen`).
+  - 피드 왼쪽 아래 Debug FAB → 전체 화면 네비 + 칭호/pending 데모.
+  - My Log: Explore와 같은 사진-only 3열 그리드 (Awaiting 제거).
+  - Awaiting ratings → Settings 목록 → `RateRecipeScreen`(별점 + 선택 ~20단어 코멘트 → `RecipeModel`).
+  - Detail: 스크롤 끝 + 미평가(pending)일 때만 Rate 화면 표시.
+
+## [2026-09-18 14:00] [feedback] Create form trim + title badges + auto #
+
+- **생성/수정된 파일**
+  - `lib/features/auth/models/user_model.dart`
+  - `lib/features/auth/providers/user_provider.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - Create에서 username / title badge / rating 입력 제거 (저장 시 UserProvider 자동 적용).
+  - Hashtag 입력: 띄어쓰기마다 다음 태그에 `#` 자동.
+  - `UserModel.titleBadges` + `equippedTitle` 설정 드로어에서 장착 선택.
+
+## [2026-09-18 13:45] [feedback] Detail layout + create form + hashtag spaces
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 해시태그 표시 `#a #b` (태그 사이 공백 1칸).
+  - Detail: `@username` 왼쪽 / 칭호 오른쪽, 다음 줄 별점, 설명 아래 해시태그. Cook note UI 제거.
+  - Create form을 Detail 필드 순서에 맞게 재구성 (cover→title→time/category→user/title→rating→desc→hashtags→ingredients→steps).
+
+## [2026-09-18 11:36] [feedback] Taller home feed photos
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - 홈 피드 카드 사진 높이 220 → **280**.
+
+## [2026-09-18 11:35] [feedback] Feed More/hashtag layout
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/services/mock_recipe_service.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - `@username`을 별점 행에서 오른쪽 끝으로 고정.
+  - 해시태그 띄어쓰기 제거 (`#a#b`), More와 함께 펼침. More는 설명 2번째 줄 우측.
+
+## [2026-09-18 11:30] [feedback] Feed cards, hashtags, username, deactivate
+
+- **생성/수정된 파일**
+  - `lib/features/recipe/models/recipe_model.dart`
+  - `lib/features/recipe/services/mock_recipe_service.dart`
+  - `lib/features/recipe/views/recipe_feed_screen.dart`
+  - `lib/features/recipe/views/recipe_detail_screen.dart`
+  - `lib/features/recipe/views/create_recipe_screen.dart`
+  - `lib/features/auth/models/user_model.dart`
+  - `lib/features/auth/providers/user_provider.dart`
+  - `lib/features/auth/views/onboarding_screen.dart`
+  - `PROJECT_MANUAL.md`
+  - `CHANGELOG.md`
+- **핵심 변경**
+  - `recommendationTags` → `hashtags`, 온보딩 Nickname → **Username**, 게시물 `@username` 표시.
+  - 홈 카드: 별점|username, 설명 2줄+More, 다음 줄 `#tags`, 사진 더 길게. Explore는 사진만.
+  - 설정 endDrawer에 **Deactivate account**(mock 로그아웃) 추가.
+
 ## [2026-09-17 13:40] [feedback] Explore search field
 
 - **생성/수정된 파일**

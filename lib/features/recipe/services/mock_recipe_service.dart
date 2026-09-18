@@ -8,6 +8,7 @@ class MockRecipeService {
   static const String currentUserId = 'current_user_me';
 
   static final List<String> _pendingRatingIds = <String>[];
+  static final Set<String> _ratedRecipeIds = <String>{};
 
   /// Returns all hard-coded recipes. No network or Firebase calls.
   static List<RecipeModel> getRecipes() =>
@@ -17,6 +18,11 @@ class MockRecipeService {
   static List<RecipeModel> getMyRecipes() => List<RecipeModel>.unmodifiable(
         _recipes.where((RecipeModel r) => r.authorId == currentUserId),
       );
+
+  static bool isPendingRating(String recipeId) =>
+      _pendingRatingIds.contains(recipeId);
+
+  static bool hasRated(String recipeId) => _ratedRecipeIds.contains(recipeId);
 
   /// Recipes waiting for the cooker's star rating after Cooking Mode.
   static List<RecipeModel> getPendingRatings() {
@@ -34,20 +40,31 @@ class MockRecipeService {
 
   /// Queues a recipe for rating after cooking finishes.
   static void addPendingRating(String recipeId) {
+    if (_ratedRecipeIds.contains(recipeId)) {
+      return;
+    }
     if (!_pendingRatingIds.contains(recipeId)) {
       _pendingRatingIds.add(recipeId);
     }
   }
 
-  /// Saves the cooker's rating and clears the pending flag.
-  static void submitPendingRating(String recipeId, double score) {
+  /// Saves the cooker's rating (+ optional comment) and clears the pending flag.
+  static void submitPendingRating(
+    String recipeId,
+    double score, {
+    String? comment,
+  }) {
     for (final recipe in _recipes) {
       if (recipe.id == recipeId) {
         recipe.satisfactionScore = score;
+        final String? trimmed = comment?.trim();
+        recipe.ratingComment =
+            (trimmed == null || trimmed.isEmpty) ? null : trimmed;
         break;
       }
     }
     _pendingRatingIds.remove(recipeId);
+    _ratedRecipeIds.add(recipeId);
   }
 
   /// Inserts a new recipe at the front of the in-memory list.
@@ -55,13 +72,25 @@ class MockRecipeService {
     _recipes.insert(0, recipe);
   }
 
+  static RecipeModel? findById(String id) {
+    for (final recipe in _recipes) {
+      if (recipe.id == id) {
+        return recipe;
+      }
+    }
+    return null;
+  }
+
   static final List<RecipeModel> _recipes = <RecipeModel>[
     RecipeModel(
       id: 'mock-spicy-tofu-jorim',
       title: 'Spicy Braised Tofu',
-      description: 'Pan-seared tofu simmered in soy–chili sauce.',
+      description:
+          'Pan-seared tofu simmered in a soy–chili sauce until glossy. '
+          'Great with rice and a fried egg on weeknights when you want '
+          'something spicy and filling without much fuss.',
       authorId: currentUserId,
-      authorName: 'Chulmin',
+      username: 'Chulmin',
       authorTitle: 'K-Banchan Craftsman',
       imageUrl:
           'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
@@ -97,7 +126,7 @@ class MockRecipeService {
         ),
       ],
       satisfactionScore: 4.5,
-      recommendationTags: <String>['Rice thief guaranteed!', 'Weeknight banchan'],
+      hashtags: <String>['Ricethiefguaranteed', 'Weeknightbanchan'],
       cookNote:
           'Next time use half a spoon less soy. Pat tofu dry for a better sear.',
       createdAt: DateTime(2026, 8, 12),
@@ -105,9 +134,12 @@ class MockRecipeService {
     RecipeModel(
       id: 'mock-kimchi-bacon-pasta',
       title: 'Kimchi Bacon Pasta',
-      description: 'Creamy pasta tossed with sour kimchi and crispy bacon.',
+      description:
+          'Creamy pasta tossed with sour kimchi and crispy bacon. '
+          'A quick fusion bowl that tastes like takeout but comes together '
+          'in one pan after the pasta is boiled.',
       authorId: 'user_emily',
-      authorName: 'Emily',
+      username: 'Emily',
       authorTitle: 'Fusion Alchemist',
       imageUrl:
           'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=800&q=80',
@@ -147,7 +179,7 @@ class MockRecipeService {
       ],
       remixCount: 2,
       satisfactionScore: 4.8,
-      recommendationTags: <String>['Must share with friends!', 'Fusion'],
+      hashtags: <String>['Mustsharewithfriends', 'Fusion'],
       cookNote: 'Older kimchi tastes deeper. Milk + butter works if cream is out.',
       createdAt: DateTime(2026, 8, 20),
     ),
@@ -156,7 +188,7 @@ class MockRecipeService {
       title: 'Beef Seaweed Soup',
       description: 'Clear soup of soaked seaweed and beef in sesame oil.',
       authorId: 'user_alex',
-      authorName: 'Alex',
+      username: 'Alex',
       imageUrl:
           'https://images.unsplash.com/photo-1547592166-23acba624cda?auto=format&fit=crop&w=800&q=80',
       category: 'Korean',
@@ -190,7 +222,7 @@ class MockRecipeService {
         ),
       ],
       satisfactionScore: 4.2,
-      recommendationTags: <String>['Easy weeknight bowl'],
+      hashtags: <String>['Easyweeknightbowl'],
       createdAt: DateTime(2026, 9, 1),
     ),
   ];

@@ -39,7 +39,7 @@ class RecipeModel {
     required this.title,
     required this.description,
     required this.authorId,
-    required this.authorName,
+    required this.username,
     this.authorTitle,
     required this.imageUrl,
     required this.category,
@@ -47,8 +47,9 @@ class RecipeModel {
     required this.ingredients,
     required this.steps,
     this.satisfactionScore = 5.0,
-    this.recommendationTags = const <String>['microwave only!'],
+    this.hashtags = const <String>['microwave only!'],
     this.cookNote,
+    this.ratingComment,
     this.parentRecipeId,
     this.remixCount = 0,
     required this.createdAt,
@@ -58,7 +59,9 @@ class RecipeModel {
   final String title;
   final String description;
   final String authorId;
-  final String authorName;
+
+  /// Public handle shown on posts and profiles.
+  final String username;
   final String? authorTitle;
   final String imageUrl;
   final String category;
@@ -69,13 +72,30 @@ class RecipeModel {
   /// Community / cook satisfaction rating out of 5.0.
   double satisfactionScore;
 
-  /// One or more recommendation tags shown as chips.
-  final List<String> recommendationTags;
+  /// Hashtags shown as `#tag` text (no chip UI on the feed).
+  final List<String> hashtags;
 
   /// Optional real-cook tip memo from the author.
   final String? cookNote;
 
+  /// Optional short comment (~20 words) left when rating after cooking.
+  String? ratingComment;
+
   final String? parentRecipeId;
   final int remixCount;
   final DateTime createdAt;
+
+  /// Formats tags as `#foo #bar` (space between tags; no spaces inside a tag).
+  String get hashtagsLine {
+    return hashtags
+        .map((String t) {
+          final String clean = t
+              .trim()
+              .replaceFirst(RegExp(r'^#+'), '')
+              .replaceAll(RegExp(r'\s+'), '');
+          return clean.isEmpty ? '' : '#$clean';
+        })
+        .where((String s) => s.isNotEmpty)
+        .join(' ');
+  }
 }

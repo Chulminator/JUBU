@@ -10,9 +10,11 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/views/onboarding_screen.dart';
+import '../../debug/views/debug_hub_screen.dart';
 import '../models/recipe_model.dart';
 import '../services/mock_recipe_service.dart';
 import 'create_recipe_screen.dart';
+import 'pending_ratings_screen.dart';
 import 'recipe_detail_screen.dart';
 
 /// Bottom-nav home: Friends / Explore / Messages / My Log + FAB.
@@ -41,7 +43,6 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
   Widget build(BuildContext context) {
     final recipes = MockRecipeService.getRecipes();
     final myRecipes = MockRecipeService.getMyRecipes();
-    final pending = MockRecipeService.getPendingRatings();
     final photoUrl =
         context.watch<UserProvider>().currentUser.photoUrl.trim();
 
@@ -50,7 +51,7 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: AppColors.background,
-        endDrawer: const _SettingsEndDrawer(),
+        endDrawer: _SettingsEndDrawer(onChanged: () => setState(() {})),
         appBar: AppBar(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
@@ -75,15 +76,33 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
             ),
           ],
         ),
-        body: TabBarView(
+        body: Stack(
           children: <Widget>[
-            _RecipeOnlyMetaList(recipes: recipes),
-            _RecipeOnlyMetaGrid(recipes: recipes),
-            const _MessagesPlaceholder(),
-            _MyLogView(
-              recipes: myRecipes,
-              pending: pending,
-              onRated: () => setState(() {}),
+            TabBarView(
+              children: <Widget>[
+                _RecipeOnlyMetaList(recipes: recipes),
+                _RecipeOnlyMetaGrid(recipes: recipes),
+                const _MessagesPlaceholder(),
+                _MyLogView(recipes: myRecipes),
+              ],
+            ),
+            Positioned(
+              left: 16,
+              bottom: 16,
+              child: FloatingActionButton.small(
+                heroTag: 'debug_hub_fab',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DebugHubScreen(),
+                    ),
+                  );
+                },
+                backgroundColor: AppColors.secondary,
+                foregroundColor: AppColors.onPrimary,
+                tooltip: 'Debug screens',
+                child: const Icon(Icons.bug_report_outlined),
+              ),
             ),
           ],
         ),
@@ -106,6 +125,7 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
           ),
         ),
         floatingActionButton: FloatingActionButton(
+          heroTag: 'create_recipe_fab',
           onPressed: _openCreateRecipe,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
@@ -119,7 +139,9 @@ class _RecipeFeedScreenState extends State<RecipeFeedScreen> {
 
 /// Settings panel that slides in from the right.
 class _SettingsEndDrawer extends StatelessWidget {
-  const _SettingsEndDrawer();
+  const _SettingsEndDrawer({required this.onChanged});
+
+  final VoidCallback onChanged;
 
   Future<void> _pickProfilePhoto(BuildContext context) async {
     final ImagePicker picker = ImagePicker();
@@ -137,6 +159,7 @@ class _SettingsEndDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>().currentUser;
+    final int pendingCount = MockRecipeService.getPendingRatings().length;
 
     return Drawer(
       backgroundColor: AppColors.cardBackground,
@@ -171,6 +194,114 @@ class _SettingsEndDrawer extends StatelessWidget {
                         const OnboardingScreen(fromSettings: true),
                   ),
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_outline),
+              title: const Text('Awaiting your rating'),
+              subtitle: Text(
+                pendingCount == 0
+                    ? 'No cooks waiting'
+                    : '$pendingCount waiting to rate',
+                style: AppTextStyles.bodySmall,
+              ),
+              trailing: pendingCount > 0
+                  ? CircleAvatar(
+                      radius: 12,
+                      backgroundColor: AppColors.swapHighlight,
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: AppColors.onPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PendingRatingsScreen(),
+                  ),
+                );
+                onChanged();
+              },
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text('Title badge', style: AppTextStyles.subtitle),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Shown next to @${user.username} on your posts',
+                style: AppTextStyles.bodySmall,
+              ),
+            ),
+            ListTile(
+              title: const Text('None'),
+              trailing: user.equippedTitle == null
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                context.read<UserProvider>().setEquippedTitle(null);
+              },
+            ),
+            ...user.titleBadges.map(
+              (String badge) => ListTile(
+                title: Text(badge),
+                trailing: user.equippedTitle == badge
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  context.read<UserProvider>().setEquippedTitle(badge);
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_off_outlined),
+              title: const Text('Deactivate account'),
+              subtitle: Text(
+                'Sign out and pause this account (mock)',
+                style: AppTextStyles.bodySmall,
+              ),
+              onTap: () async {
+                final bool? confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (BuildContext dialogContext) {
+                    return AlertDialog(
+                      title: const Text('Deactivate account?'),
+                      content: const Text(
+                        'This mock flow signs you out. '
+                        'Cloud deactivate comes later with Firebase.',
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          child: Text(
+                            'Deactivate',
+                            style: TextStyle(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+                if (confirmed != true || !context.mounted) {
+                  return;
+                }
+                Navigator.of(context).pop();
+                await context.read<AuthService>().signOut();
               },
             ),
             ListTile(
@@ -320,12 +451,17 @@ class _MessagesPlaceholder extends StatelessWidget {
   }
 }
 
-/// Feed card: photo, title, rating, tags, author, author title.
+/// Feed card: photo + meta (home) or photo-only (explore).
 class _RecipeMetaCard extends StatelessWidget {
-  const _RecipeMetaCard({required this.recipe, this.wide = false});
+  const _RecipeMetaCard({
+    required this.recipe,
+    this.wide = false,
+    this.photoOnly = false,
+  });
 
   final RecipeModel recipe;
   final bool wide;
+  final bool photoOnly;
 
   Widget _cover() {
     final url = recipe.imageUrl;
@@ -348,26 +484,44 @@ class _RecipeMetaCard extends StatelessWidget {
     );
   }
 
+  Future<void> _openDetail(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RecipeDetailScreen(recipe: recipe),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (photoOnly) {
+      return Material(
+        color: AppColors.cardBackground,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openDetail(context),
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: _cover(),
+          ),
+        ),
+      );
+    }
+
+    final double photoHeight = wide ? 280 : 110;
+
     return Material(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => RecipeDetailScreen(recipe: recipe),
-            ),
-          );
-        },
+        onTap: () => _openDetail(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: wide ? MainAxisSize.min : MainAxisSize.max,
           children: <Widget>[
             SizedBox(
-              height: wide ? 160 : 110,
+              height: photoHeight,
               width: double.infinity,
               child: _cover(),
             ),
@@ -399,51 +553,25 @@ class _RecipeMetaCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: recipe.recommendationTags.map((String tag) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondaryLight,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
+                      Expanded(
                         child: Text(
-                          tag,
+                          '@${recipe.username}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.secondary,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    recipe.authorName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (recipe.authorTitle != null) ...<Widget>[
-                    const SizedBox(height: 2),
-                    Text(
-                      recipe.authorTitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.secondary,
                       ),
+                    ],
+                  ),
+                  if (recipe.description.trim().isNotEmpty ||
+                      recipe.hashtagsLine.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 8),
+                    _ExpandableDescription(
+                      text: recipe.description,
+                      hashtags: recipe.hashtagsLine,
                     ),
                   ],
                 ],
@@ -452,6 +580,109 @@ class _RecipeMetaCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Description (~2 lines) with More on the right of line 2.
+/// Hashtags expand together with More (no spaces between tags).
+class _ExpandableDescription extends StatefulWidget {
+  const _ExpandableDescription({
+    required this.text,
+    required this.hashtags,
+  });
+
+  final String text;
+  final String hashtags;
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  bool _expanded = false;
+
+  bool _exceedsTwoLines(double maxWidth, TextStyle style) {
+    final String body = widget.text.trim();
+    if (body.isEmpty) {
+      return widget.hashtags.isNotEmpty;
+    }
+    final TextPainter painter = TextPainter(
+      text: TextSpan(text: body, style: style),
+      maxLines: 2,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: maxWidth);
+    return painter.didExceedMaxLines || widget.hashtags.isNotEmpty;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle bodyStyle = AppTextStyles.bodySmall;
+    final TextStyle moreStyle = AppTextStyles.bodySmall.copyWith(
+      color: AppColors.primary,
+      fontWeight: FontWeight.w700,
+    );
+    final TextStyle tagStyle = AppTextStyles.bodySmall.copyWith(
+      color: AppColors.secondary,
+      fontWeight: FontWeight.w600,
+    );
+
+    if (_expanded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (widget.text.trim().isNotEmpty)
+            Text(widget.text, style: bodyStyle),
+          if (widget.hashtags.isNotEmpty) ...<Widget>[
+            if (widget.text.trim().isNotEmpty) const SizedBox(height: 4),
+            Text(widget.hashtags, style: tagStyle),
+          ],
+          GestureDetector(
+            onTap: () => setState(() => _expanded = false),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text('Less', style: moreStyle),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool showMore =
+            _exceedsTwoLines(constraints.maxWidth, bodyStyle);
+        final String preview = widget.text.trim().isEmpty
+            ? widget.hashtags
+            : widget.text;
+
+        return Stack(
+          children: <Widget>[
+            Text(
+              preview,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: widget.text.trim().isEmpty ? tagStyle : bodyStyle,
+            ),
+            if (showMore)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
+                  onTap: () => setState(() => _expanded = true),
+                  child: Container(
+                    padding: const EdgeInsets.only(left: 10),
+                    color: AppColors.cardBackground,
+                    child: Text('More', style: moreStyle),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -541,10 +772,11 @@ class _RecipeOnlyMetaGridState extends State<_RecipeOnlyMetaGrid>
       return widget.recipes;
     }
     return widget.recipes.where((RecipeModel r) {
-      final String tags = r.recommendationTags.join(' ').toLowerCase();
+      final String tags = r.hashtags.join(' ').toLowerCase();
       return r.title.toLowerCase().contains(q) ||
-          r.authorName.toLowerCase().contains(q) ||
+          r.username.toLowerCase().contains(q) ||
           r.category.toLowerCase().contains(q) ||
+          r.description.toLowerCase().contains(q) ||
           tags.contains(q);
     }).toList();
   }
@@ -606,18 +838,21 @@ class _RecipeOnlyMetaGridState extends State<_RecipeOnlyMetaGrid>
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(2),
                   sliver: SliverGrid(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.62,
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 2,
+                      crossAxisSpacing: 2,
+                      childAspectRatio: 1,
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (BuildContext context, int index) {
-                        return _RecipeMetaCard(recipe: recipes[index]);
+                        return _RecipeMetaCard(
+                          recipe: recipes[index],
+                          photoOnly: true,
+                        );
                       },
                       childCount: recipes.length,
                     ),
@@ -678,89 +913,37 @@ class _RecipeOnlyMetaListState extends State<_RecipeOnlyMetaList>
 }
 
 class _MyLogView extends StatelessWidget {
-  const _MyLogView({
-    required this.recipes,
-    required this.pending,
-    required this.onRated,
-  });
+  const _MyLogView({required this.recipes});
 
   final List<RecipeModel> recipes;
-  final List<RecipeModel> pending;
-  final VoidCallback onRated;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: <Widget>[
-        if (pending.isNotEmpty) ...<Widget>[
-          Text('Awaiting your rating', style: AppTextStyles.subtitle),
-          const SizedBox(height: 4),
-          Text(
-            'Finished Cooking Mode — tap to rate.',
-            style: AppTextStyles.bodySmall,
-          ),
-          const SizedBox(height: 8),
-          ...pending.map(
-            (RecipeModel r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: AppColors.swapHighlightLight,
-                borderRadius: BorderRadius.circular(12),
-                child: ListTile(
-                  leading: const Icon(
-                    Icons.star_outline,
-                    color: AppColors.swapHighlight,
-                  ),
-                  title: Text(r.title, style: AppTextStyles.body),
-                  subtitle: const Text('Pending rating'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => RecipeDetailScreen(recipe: r),
-                      ),
-                    );
-                    onRated();
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        Text('My Cook Log', style: AppTextStyles.subtitle),
-        const SizedBox(height: 4),
-        Text(
-          '${recipes.length} cook log${recipes.length == 1 ? '' : 's'}',
+    if (recipes.isEmpty) {
+      return Center(
+        child: Text(
+          'No cook logs yet.\nTap + to add one.',
+          textAlign: TextAlign.center,
           style: AppTextStyles.bodySmall,
         ),
-        const SizedBox(height: 12),
-        if (recipes.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'No cook logs yet.\nTap + to add one.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySmall,
-            ),
-          )
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.62,
-            ),
-            itemCount: recipes.length,
-            itemBuilder: (BuildContext context, int index) {
-              return _RecipeMetaCard(recipe: recipes[index]);
-            },
-          ),
-      ],
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(2),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        childAspectRatio: 1,
+      ),
+      itemCount: recipes.length,
+      itemBuilder: (BuildContext context, int index) {
+        return _RecipeMetaCard(
+          recipe: recipes[index],
+          photoOnly: true,
+        );
+      },
     );
   }
 }

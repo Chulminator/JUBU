@@ -22,8 +22,9 @@
 - 카드 눌러 상세 보기 (세로 스크롤)
 - **전역 단위 설정**(Metric ↔ Imperial)에 따라 상세 재료 단위 자동 변환
 - **Start cooking mode** 로 단계별 요리 모드 + 타이머
-- 요리 완료 후 **별점 대기(My Log)** → 상세에서 별점 제출
+- 요리 완료 후 **별점 대기** → Settings / 상세 스크롤 끝에서 별점·코멘트 제출
 - 오른쪽 아래 **+** 로 새 레시피 / 요리 일지 작성 (갤러리 사진 포함)
+- 왼쪽 아래 **버그 아이콘** → Debug hub (화면 이동·칭호 해금 데모)
 
 아직 없는 것: Firestore 레시피 저장, 팔로우 소셜, 인분 조절, 리믹스 UI
 
@@ -119,8 +120,10 @@ flutter run -d chrome --web-port=7357
 
 1. 피드 AppBar 오른쪽 **설정** 아이콘 → **오른쪽**에서 패널이 열림
 2. **Profile photo** → 갤러리 선택 → 하단 My Log 아바타 변경 확인
-3. **Profile & units** → 단위/닉네임 변경 후 Save
-4. **Sign out** → 로그인 화면으로 복귀
+3. **Profile & units** → Username / 단위 변경 후 Save
+4. **Title badge** → 목록에서 장착할 칭호 선택 (None 가능)
+5. **Deactivate account** → 확인 후 로그인 화면(mock)
+6. **Sign out** → 로그인 화면으로 복귀
 
 **참고:** 레시피 Firestore 저장은 아직 없습니다. Auth 분기만 동작합니다.
 
@@ -134,7 +137,7 @@ flutter run -d chrome --web-port=7357
 **신규 Google 유저** 경로로 들어올 때 온보딩이 뜹니다. 선호값은 아직 기기 메모리(`UserProvider`)에만 저장됩니다.
 
 **온보딩에서 설정하는 것**
-1. **Nickname** — 표시 이름
+1. **Username** — 게시물에 보이는 핸들 (`@username`)
 2. **Measurement units** — **Metric** (g, ml) vs **Imperial** (oz, cup) 카드 선택
 3. **Preferred cuisines** — Korean / Fusion / Western / Quick Meal 등 `FilterChip` 다중 선택
 4. **Start JUBU** — `UserProvider` 저장 + `AuthService.completeOnboarding()` → 피드
@@ -163,31 +166,30 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 
 | 아이콘 | 탭 | 무엇을 보나요? |
 |--------|----|----------------|
-| 집 | Friends | 넓은 카드 리스트. **당겨서 새로고침** / 아래 스크롤 시 **포크·나이프** 로딩 |
-| 돋보기 | Explore | 상단 **검색창** + 2열 그리드. 포크·나이프 로딩 |
+| 집 | Friends (홈) | 세로로 긴 사진(280) + 제목 + **별점 \| @username** + 설명(2줄+More) + `#hashtags` |
+| 돋보기 | Explore | 상단 검색창 + **사진만** 3열 그리드 |
 | 말풍선 | Messages | 플레이스홀더 (*Coming soon*) |
-| 원형 프로필 | My Log | 내 기록 + (있으면) **Awaiting your rating** |
+| 원형 프로필 | My Log | **사진만** 3열 그리드 (Explore와 동일) |
 
 **설정 (톱니바퀴)**  
-- 오른쪽에서 `endDrawer` 슬라이드  
-- **Profile photo** — 갤러리에서 사진 선택 (하단 My Log 아바타에 반영)  
-- **Profile & units** / **Sign out**
+- 오른쪽 `endDrawer`  
+- **Profile photo** / **Profile & units** / **Awaiting your rating**(대기 목록) / **Title badge**(목록에서 장착) / **Deactivate account** / **Sign out**
 
-**카드에 보이는 것**
-1. 사진  
-2. 제목  
-3. 별점 (이용자/완성도 점수)  
-4. 태그(들) — 여러 개면 칩이 여러 개  
-5. 만든 사람  
-6. 만든 사람 칭호 (없으면 줄 없음)
+**디버그 FAB**  
+- 피드 **왼쪽 아래** 작은 버그 버튼 → `DebugHubScreen` (Feed / Detail / Create / Cooking / Pending / Rate / Login / Onboarding / 칭호 해금 데모 / pending 큐 추가)
+
+**작성 화면 (`CreateRecipeScreen`)**  
+Cover → Title → Time/Category → Description → Hashtags(띄어쓰기마다 `#` 자동) → Ingredients → Steps  
+Username·칭호·별점은 저장 시 UserProvider에서 자동 적용 (폼에 없음).
+
 
 카드를 누르면 **상세**로 이동합니다.  
 사진이 회색+포크면 인터넷(Unsplash) 문제일 수 있습니다. 제목·별점은 보여야 합니다.
 
 **Mock 샘플 (영문 UI 기준)**
 
-| Title | Author | Title badge | Notes |
-|-------|--------|-------------|--------|
+| Title | Username | Title badge | Notes |
+|-------|----------|-------------|--------|
 | Spicy Braised Tofu | Chulmin | K-Banchan Craftsman | My Log에도 포함 (`current_user_me`) |
 | Kimchi Bacon Pasta | Emily | Fusion Alchemist | |
 | Beef Seaweed Soup | Alex | (없음) | |
@@ -199,7 +201,9 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 피드 카드 → 상세.
 
 **레이아웃:** 탭 없음. **한 화면 세로 스크롤**  
-순서: 커버 사진 → 제목/시간/카테고리/작성자 → 요리 노트 카드(별·태그·메모) → **Ingredients** → **Steps** → (별점 대기일 때만) **Rate this cook**
+순서: 커버 사진 → 제목/시간/카테고리 → `@username` | 칭호 → 별점(+선택 코멘트) → 설명 → 해시태그 → **Ingredients** → **Steps**
+
+Cooking Mode를 **Done cooking**하면 바로 `RateRecipeScreen`이 열립니다.
 
 **단위 변환 (전역 설정)**
 - `UserProvider.currentUser.preferImperial` 값에 따라 자동 적용 (상세 AppBar 토글 없음)
@@ -223,8 +227,8 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 - 큰 글씨 지침 (`AppTextStyles.cookingMode`)
 - 좌우 스와이프 또는 **Previous / Next**
 - `timerMinutes` 있는 단계: 큰 `MM:SS` + **Start / Pause / Reset**
-- 마지막 단계 **Done cooking** → 다이얼로그 → 상세로 복귀  
-  동시에 My Log에 **Awaiting your rating** 이 쌓입니다.
+- 마지막 단계 **Done cooking** → 바로 **Rate this cook** 화면
+  (0점+빈 코멘트로 Submit하면 Settings **Awaiting your rating**에 남음)
 
 타이머 있는 Mock 예: Spicy Braised Tofu step 3 (5분), Beef Seaweed Soup step 3 (20분)
 
@@ -232,10 +236,14 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 
 ### 3.4 별점 대기 → 제출
 
-1. 아무 레시피로 Cooking Mode를 **Done cooking**까지 끝냅니다.
-2. **My Log** 탭 → **Awaiting your rating** 목록 확인
-3. 항목을 누르면 상세가 열리고, **맨 아래**에 별점 슬라이더 + **Submit rating**
-4. 제출하면 대기 목록에서 사라지고 카드 별점이 갱신됩니다.
+**Settings에 두는 이유:** My Log는 사진 아카이브로 두고, “할 일(별점)”은 Settings에서 모아 보는 편이 덜 섞입니다. (알림 탭이 생기면 거기로 옮겨도 됨)
+
+1. Cooking Mode → **Done cooking** → 바로 `RateRecipeScreen` (기본 별점 **0**)
+2. 별점/코멘트 입력 후 **Submit** → `satisfactionScore` / `ratingComment` 저장
+3. **0점 + 코멘트 없음**으로 Submit → 평가 안 한 것으로 보고 Settings **Awaiting your rating**에 남음
+4. Settings → **Awaiting your rating** → 목록에서 다시 Rate 가능
+
+**칭호 해금 화면:** Debug hub → **Unlock title badge** → `TitleBadgeUnlockScreen` 축하 화면.
 
 ---
 
@@ -252,7 +260,7 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 | Cook diary (optional) fold | Satisfaction 슬라이더, **Tags** (쉼표로 여러 개), Cook note |
 
 **Save** 시:
-- `authorId: current_user_me`, `authorName: Me`
+- `authorId: current_user_me`, `username:` 현재 UserProvider username
 - Mock 리스트 **맨 앞**에 추가
 - 피드로 돌아오면 Explore / My Log에 새 카드가 보여야 함
 
@@ -268,13 +276,15 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 - [x] 상세 세로 스크롤 + 단위 변환 테스트 아이콘
 - [x] 요리 노트 카드 (별점·태그·메모)
 - [x] Cooking Mode (PageView·타이머·Done cooking)
-- [x] 별점 대기 큐 (My Log) + 상세에서 제출
+- [x] 별점 대기 큐 (Settings) + Rate 화면(별·코멘트) + Done cooking 직후 표시
 - [x] CreateRecipeScreen (갤러리·다중 태그·fold 옵션)
+- [x] Title badge 장착 (Settings) + 해금 축하 화면(디버그)
+- [x] Debug hub FAB (화면 네비게이션)
 - [ ] Google 로그인 / 온보딩
 - [ ] Firestore 연동
 - [ ] 인분(Servings) 조절
 - [ ] 리믹스 UI
-- [ ] 칭호 해금/장착 시스템
+- [ ] 칭호 해금 조건(실제 업적 연동)
 
 ---
 
@@ -282,7 +292,7 @@ AppBar의 시험관/자 **임시 토글은 제거**되었습니다. 단위는 �
 
 ```text
 lib/
-├── main.dart                          ← 앱 시작, RecipeFeedScreen
+├── main.dart                          ← 앱 시작, AuthGate
 ├── core/
 │   ├── constants/app_colors.dart      ← 색
 │   ├── constants/app_text_styles.dart ← 글자 스타일 (cookingMode 포함)
@@ -293,12 +303,19 @@ lib/
     │   ├── services/mock_recipe_service.dart
     │   │     getRecipes / getMyRecipes / addRecipe
     │   │     addPendingRating / getPendingRatings / submitPendingRating
+    │   │     hasRated / isPendingRating
     │   └── views/
     │         recipe_feed_screen.dart
     │         recipe_detail_screen.dart
     │         create_recipe_screen.dart
+    │         pending_ratings_screen.dart
+    │         rate_recipe_screen.dart
     ├── cooking_mode/views/cooking_mode_screen.dart
-    └── auth/                          ← 아직 비어 있음
+    ├── debug/views/debug_hub_screen.dart
+    └── auth/
+          views/login_screen.dart
+          views/title_badge_unlock_screen.dart
+          providers/user_provider.dart
 ```
 
 ### 데이터 모델 요약 (`recipe_model.dart`)
@@ -306,7 +323,7 @@ lib/
 - **Ingredient:** `name`, `amount`, `unit`, `storeTip?`  
   (`substitutions` 필드는 **제거됨**)
 - **RecipeStep:** `stepNumber`, `instruction`, `timerMinutes?`, `imagePath?` (갤러리 로컬 경로)
-- **RecipeModel:** `id`, `title`, `description`, `authorId`, `authorName`, `authorTitle?`, `imageUrl`, `category`, `cookingTimeMinutes`, `ingredients`, `steps`, `satisfactionScore` (기본 5.0), `recommendationTags` (리스트, 기본 `microwave only!`), `cookNote?`, `parentRecipeId?`, `remixCount`, `createdAt`
+- **RecipeModel:** `id`, `title`, `description`, `authorId`, `username`, `authorTitle?`, `imageUrl`, `category`, `cookingTimeMinutes`, `ingredients`, `steps`, `satisfactionScore` (기본 5.0), `hashtags`, `cookNote?`, `ratingComment?`, `parentRecipeId?`, `remixCount`, `createdAt`
 
 ### 단위 변환 (`unit_converter.dart`)
 
